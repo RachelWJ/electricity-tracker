@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>電費管理</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --border: #e0ddd6;
+    --text: #1a1a18;
+    --muted: #7a7870;
+    --accent: #2d5a3d;
+    --accent-light: #eaf2ed;
+    --accent-muted: #5a8a6a;
+    --danger: #c0392b;
+    --danger-light: #fdf2f1;
+    --warning-bg: #fdf6e3;
+    --warning-text: #8a6500;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --mono: 'DM Mono', monospace;
+    --sans: 'Noto Sans TC', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Lock Screen ── */
+  #lock-screen {
+    position: fixed; inset: 0;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    padding: 2rem;
+  }
+  .lock-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.5rem 2rem;
+    width: 100%; max-width: 340px;
+    text-align: center;
+  }
+  .lock-icon {
+    width: 52px; height: 52px;
+    background: var(--accent-light);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem;
+    font-size: 22px;
+  }
+  .lock-title {
+    font-size: 17px; font-weight: 700;
+    margin-bottom: .25rem;
+  }
+  .lock-sub {
+    font-size: 13px; color: var(--muted);
+    margin-bottom: 1.5rem;
+  }
+  .lock-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 16px;
+    font-family: var(--mono);
+    letter-spacing: .1em;
+    background: var(--bg);
+    color: var(--text);
+    margin-bottom: .75rem;
+    text-align: center;
+    transition: border-color .15s;
+  }
+  .lock-input:focus { outline: none; border-color: var(--accent); }
+  .lock-btn {
+    width: 100%;
+    padding: 11px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 500;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: opacity .15s;
+  }
+  .lock-btn:hover { opacity: .88; }
+  .lock-error {
+    font-size: 13px; color: var(--danger);
+    margin-top: .6rem; min-height: 18px;
+  }
+
+  /* ── App Shell ── */
+  #app { display: none; }
+
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: .9rem 1.25rem;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 10;
+  }
+  .header-title {
+    font-size: 16px; font-weight: 700;
+    letter-spacing: .01em;
+  }
+  .header-sub {
+    font-size: 11px; color: var(--muted);
+    font-family: var(--mono);
+  }
+  .sync-status {
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .sync-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+  .sync-dot.ok { background: #27ae60; }
+  .sync-dot.loading { background: #f39c12; animation: pulse 1s infinite; }
+  .sync-dot.err { background: var(--danger); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    flex: 1; padding: 11px;
+    font-size: 13px; font-weight: 500;
+    text-align: center; cursor: pointer;
+    border: none; background: transparent;
+    color: var(--muted);
+    font-family: var(--sans);
+    border-bottom: 2px solid transparent;
+    transition: all .15s;
+  }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── Content ── */
+  .content { padding: 1rem; max-width: 600px; margin: 0 auto; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.1rem;
+    margin-bottom: .75rem;
+  }
+  .card-label {
+    font-size: 10px; font-weight: 700;
+    letter-spacing: .1em; text-transform: uppercase;
+    color: var(--muted); margin-bottom: .75rem;
+  }
+
+  /* ── Season Toggle ── */
+  .season-wrap { display: flex; gap: 6px; margin-bottom: .9rem; }
+  .season-btn {
+    flex: 1; padding: 8px 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 12px; cursor: pointer;
+    background: transparent; color: var(--muted);
+    font-family: var(--sans); font-weight: 500;
+    transition: all .15s;
+  }
+  .season-btn.active {
+    background: var(--accent-light);
+    color: var(--accent);
+    border-color: var(--accent-muted);
+  }
+
+  /* ── Form elements ── */
+  .field-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: .6rem;
+  }
+  .field-label {
+    font-size: 13px; color: var(--muted);
+    white-space: nowrap; min-width: 110px;
+  }
+  input[type=number], input[type=month] {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 500;
+    font-family: var(--mono);
+    color: var(--text);
+    background: var(--bg);
+    transition: border-color .15s;
+  }
+  input[type=number]:focus, input[type=month]:focus {
+    outline: none; border-color: var(--accent);
+  }
+  input[type=number] { width: 120px; }
+  input[type=month] { width: 150px; }
+
+  /* ── Meter grid ── */
+  .meter-header {
+    display: grid; grid-template-columns: 62px 1fr 1fr;
+    gap: 6px; margin-bottom: 8px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
+  .meter-header span { font-size: 11px; color: var(--muted); text-align: center; }
+  .meter-header span:first-child { text-align: left; }
+  .meter-row {
+    display: grid; grid-template-columns: 62px 1fr 1fr;
+    gap: 6px; align-items: center; margin-bottom: 8px;
+  }
+  .meter-row input { width: 100%; text-align: center; }
+  .unit-tag {
+    font-size: 13px; font-weight: 700;
+    color: var(--accent);
+    font-family: var(--mono);
+    background: var(--accent-light);
+    padding: 4px 8px; border-radius: var(--radius-sm);
+    text-align: center;
+  }
+
+  /* ── Result ── */
+  .result-block {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+    padding: .85rem 1rem;
+    margin-bottom: 8px;
+  }
+  .result-top {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .result-name { font-size: 13px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+  .result-amount { font-size: 18px; font-weight: 700; font-family: var(--mono); }
+  .result-line {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: var(--muted);
+    padding: 3px 0; border-bottom: 1px solid var(--border);
+  }
+  .result-line:last-child { border-bottom: none; }
+  .result-line span:last-child { font-family: var(--mono); color: var(--text); font-weight: 500; }
+  .tier-detail { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: var(--mono); line-height: 1.8; }
+
+  .total-bar {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 12px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
+  }
+  .total-label { font-size: 13px; color: var(--muted); }
+  .total-amount { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+
+  .btn-row { display: flex; gap: 8px; margin-top: .9rem; justify-content: flex-end; }
+  .btn {
+    padding: 9px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500;
+    cursor: pointer; border: 1px solid var(--border);
+    background: transparent; color: var(--text);
+    font-family: var(--sans);
+    transition: all .15s;
+  }
+  .btn:hover { background: var(--bg); }
+  .btn-primary {
+    background: var(--accent); color: #fff;
+    border-color: var(--accent);
+  }
+  .btn-primary:hover { opacity: .88; }
+  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* ── History ── */
+  .metrics-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr);
+    gap: 8px; margin-bottom: .75rem;
+  }
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: .85rem 1rem;
+  }
+  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .metric-val { font-size: 20px; font-weight: 700; font-family: var(--mono); }
+  .metric-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
+
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    overflow: hidden;
+  }
+  .history-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: .85rem 1rem;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+  }
+  .history-month { font-size: 15px; font-weight: 700; font-family: var(--mono); }
+  .history-total { font-size: 17px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+  .history-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .history-body { padding: .75rem 1rem; }
+  .history-unit-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 5px 0; border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .history-unit-row:last-child { border-bottom: none; }
+  .h-unit-name { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: 12px; }
+  .h-unit-cost { font-family: var(--mono); font-weight: 500; }
+  .h-unit-kwh { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+  .badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 99px; font-size: 10px; font-weight: 700;
+    letter-spacing: .04em;
+  }
+  .badge-summer { background: var(--warning-bg); color: var(--warning-text); }
+  .badge-non { background: var(--accent-light); color: var(--accent); }
+
+  .del-btn {
+    font-size: 11px; padding: 3px 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    cursor: pointer; background: transparent; color: var(--muted);
+    font-family: var(--sans);
+    transition: all .15s;
+  }
+  .del-btn:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
+
+  .empty-state {
+    text-align: center; padding: 3rem 1rem;
+    color: var(--muted); font-size: 14px;
+  }
+  .empty-icon { font-size: 36px; margin-bottom: 1rem; }
+
+  .history-actions {
+    display: flex; justify-content: flex-end; margin-bottom: .75rem;
+  }
+
+  .toast {
+    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
+    background: var(--text); color: #fff;
+    padding: 10px 20px; border-radius: 99px;
+    font-size: 13px; font-weight: 500;
+    z-index: 200; opacity: 0;
+    transition: opacity .2s;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- Lock Screen -->
+<div id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">電費管理系統</div>
+    <div class="lock-sub">請輸入密碼以繼續</div>
+    <input class="lock-input" type="password" id="pw-input" placeholder="••••••••" maxlength="30"
+      onkeydown="if(event.key==='Enter')unlock()">
+    <button class="lock-btn" onclick="unlock()">進入</button>
+    <div class="lock-error" id="lock-error"></div>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="header">
+    <div>
+      <div class="header-title">電費管理</div>
+      <div class="header-sub">2-1 ／ 2-2 ／ 3-1 ／ 3-2</div>
+    </div>
+    <div class="sync-status">
+      <div class="sync-dot" id="sync-dot"></div>
+      <span id="sync-text">—</span>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('calc')">計算電費</button>
+    <button class="tab" onclick="switchTab('history')">歷史紀錄</button>
+  </div>
+
+  <div class="content">
+
+    <!-- Calc Panel -->
+    <div class="panel active" id="panel-calc">
+      <div class="card">
+        <div class="card-label">基本設定</div>
+        <div class="field-row">
+          <span class="field-label">計費月份</span>
+          <input type="month" id="bill-month">
+        </div>
+        <div class="field-row">
+          <span class="field-label">公用電費（元）</span>
+          <input type="number" id="public-fee" value="0" min="0" oninput="calc()">
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">季節費率</div>
+        <div class="season-wrap">
+          <button class="season-btn active" onclick="setSeason('non')">非夏季（10～5月）</button>
+          <button class="season-btn" onclick="setSeason('summer')">夏季（6～9月）</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="rate-hint"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-label">電表讀數</div>
+        <div class="meter-header">
+          <span>戶別</span><span>上期電表</span><span>本期電表</span>
+        </div>
+        <div id="meter-inputs"></div>
+      </div>
+
+      <div class="card" id="result-card" style="display:none">
+        <div class="card-label">計算結果</div>
+        <div id="results"></div>
+        <div class="total-bar">
+          <span class="total-label">本月合計</span>
+          <span class="total-amount" id="grand-total">$0</span>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" id="save-btn" onclick="saveRecord()">儲存本月紀錄</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History Panel -->
+    <div class="panel" id="panel-history">
+      <div class="metrics-grid" id="metrics"></div>
+      <div class="history-actions">
+        <button class="btn" style="font-size:12px;padding:6px 14px" onclick="exportCSV()">匯出 CSV</button>
+      </div>
+      <div id="history-list"></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyUP9q-d8iSvjaraFE-k8IXHxZ9KhxuMQw-rggxXso-u6qoHCs7r0D_hjOrHJjwl_Hs/exec';
+const PASSWORD = 'sweet16';
+const UNITS = ['2-1','2-2','3-1','3-2'];
+
+const TIERS = {
+  non:    [{max:60,rate:1.63},{max:105,rate:2.10},{max:85,rate:2.89},{max:100,rate:3.94},{max:150,rate:4.74},{max:500,rate:6.03}],
+  summer: [{max:60,rate:1.63},{max:105,rate:2.38},{max:85,rate:3.52},{max:100,rate:4.80},{max:150,rate:5.83},{max:500,rate:7.69}]
+};
+
+let season = 'non';
+let lastRows = [];
+let records = [];
+
+// ── Auth ──
+function unlock() {
+  const val = document.getElementById('pw-input').value;
+  if (val === PASSWORD) {
+    document.getElementById('lock-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    init();
+  } else {
+    document.getElementById('lock-error').textContent = '密碼錯誤，請再試一次';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+
+// ── Init ──
+function init() {
+  renderMeterInputs();
+  const now = new Date();
+  document.getElementById('bill-month').value =
+    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  updateRateHint();
+  calc();
+  loadFromSheets();
+}
+
+// ── Season ──
+function setSeason(s) {
+  season = s;
+  document.querySelectorAll('.season-btn').forEach((b,i) =>
+    b.classList.toggle('active', i === (s==='non'?0:1)));
+  updateRateHint();
+  calc();
+}
+
+function updateRateHint() {
+  const t = TIERS[season];
+  document.getElementById('rate-hint').textContent =
+    t.map(x=>`$${x.rate}/度(前${x.max}度)`).join('  ');
+}
+
+// ── Calc ──
+function calcUnit(kwh) {
+  const t = TIERS[season]; let rem = kwh, cost = 0; const detail = [];
+  for (const tier of t) {
+    if (rem <= 0) break;
+    const used = Math.min(rem, tier.max);
+    const c = +(used * tier.rate).toFixed(2);
+    if (used > 0) detail.push({used, rate:tier.rate, cost:c});
+    cost += c; rem -= used;
+  }
+  return {cost: +cost.toFixed(2), detail};
+}
+
+function renderMeterInputs() {
+  document.getElementById('meter-inputs').innerHTML = UNITS.map((u,i) => `
+    <div class="meter-row">
+      <div class="unit-tag">${u}</div>
+      <input type="number" id="prev${i}" placeholder="上期" min="0" oninput="calc()">
+      <input type="number" id="curr${i}" placeholder="本期" min="0" oninput="calc()">
+    </div>`).join('');
+}
+
+function calc() {
+  const pub = parseFloat(document.getElementById('public-fee').value) || 0;
+  lastRows = []; let anyData = false;
+  UNITS.forEach((u,i) => {
+    const prev = parseFloat(document.getElementById('prev'+i).value);
+    const curr = parseFloat(document.getElementById('curr'+i).value);
+    if (!isNaN(prev) && !isNaN(curr) && curr >= prev) {
+      anyData = true;
+      const kwh = curr - prev;
+      const {cost, detail} = calcUnit(kwh);
+      const share = +(pub / UNITS.length).toFixed(2);
+      const total = +(cost + share).toFixed(2);
+      lastRows.push({name:u, kwh, cost, share, total, detail, prev, curr});
+    }
+  });
+
+  const rc = document.getElementById('result-card');
+  if (!anyData) { rc.style.display='none'; return; }
+  rc.style.display = 'block';
+
+  const grand = lastRows.reduce((s,r) => s+r.total, 0);
+  document.getElementById('grand-total').textContent = '$' + Math.round(grand).toLocaleString();
+
+  document.getElementById('results').innerHTML = lastRows.map(r => `
+    <div class="result-block">
+      <div class="result-top">
+        <span class="result-name">${r.name}</span>
+        <span class="result-amount">$${Math.round(r.total).toLocaleString()}</span>
+      </div>
+      <div class="result-line"><span>用電量</span><span>${r.kwh} 度</span></div>
+      <div class="result-line"><span>電費小計</span><span>$${r.cost.toFixed(2)}</span></div>
+      ${r.share > 0 ? `<div class="result-line"><span>公用攤分</span><span>$${r.share.toFixed(2)}</span></div>` : ''}
+      <div class="tier-detail">${r.detail.map(d=>`${d.used}度×$${d.rate}=$${d.cost.toFixed(1)}`).join('　')}</div>
+    </div>`).join('');
+}
+
+// ── Sync ──
+function setSyncStatus(state, text) {
+  const dot = document.getElementById('sync-dot');
+  dot.className = 'sync-dot' + (state ? ' '+state : '');
+  document.getElementById('sync-text').textContent = text;
+}
+
+async function loadFromSheets() {
+  setSyncStatus('loading', '同步中...');
+  try {
+    const res = await fetch(SCRIPT_URL);
+    const json = await res.json();
+    if (json.status === 'ok') {
+      records = json.data || [];
+      setSyncStatus('ok', '已同步');
+    } else { throw new Error(); }
+  } catch {
+    setSyncStatus('err', '同步失敗');
+  }
+}
+
+async function apiPost(payload) {
+  const res = await fetch(SCRIPT_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+
+// ── Save ──
+async function saveRecord() {
+  if (!lastRows.length) { showToast('請先填入電表數字'); return; }
+  const month = document.getElementById('bill-month').value;
+  if (!month) { showToast('請選擇計費月份'); return; }
+
+  const btn = document.getElementById('save-btn');
+  btn.disabled = true; btn.textContent = '儲存中...';
+  setSyncStatus('loading', '儲存中...');
+
+  const pub = parseFloat(document.getElementById('public-fee').value) || 0;
+  const payload = {
+    action: 'save', month, season, public: pub,
+    u1cost: getUnitVal('2-1','cost'), u1kwh: getUnitVal('2-1','kwh'),
+    u2cost: getUnitVal('2-2','cost'), u2kwh: getUnitVal('2-2','kwh'),
+    u3cost: getUnitVal('3-1','cost'), u3kwh: getUnitVal('3-1','kwh'),
+    u4cost: getUnitVal('3-2','cost'), u4kwh: getUnitVal('3-2','kwh'),
+    total: Math.round(lastRows.reduce((s,r)=>s+r.total,0))
+  };
+
+  try {
+    await apiPost(payload);
+    setSyncStatus('ok', '已儲存');
+    showToast(`${month} 電費紀錄已儲存`);
+    await loadFromSheets();
+    switchTab('history');
+  } catch {
+    setSyncStatus('err', '儲存失敗');
+    showToast('儲存失敗，請檢查網路');
+  }
+  btn.disabled = false; btn.textContent = '儲存本月紀錄';
+}
+
+function getUnitVal(name, field) {
+  const r = lastRows.find(x => x.name === name);
+  return r ? (field==='cost' ? Math.round(r.total) : r.kwh) : '';
+}
+
+// ── Delete ──
+async function deleteRecord(month) {
+  if (!confirm(`確定刪除 ${month} 的紀錄？`)) return;
+  setSyncStatus('loading', '刪除中...');
+  try {
+    await apiPost({action:'delete', month});
+    showToast(`${month} 已刪除`);
+    await loadFromSheets();
+    renderHistory();
+  } catch {
+    setSyncStatus('err', '刪除失敗');
+  }
+}
+
+// ── History ──
+function switchTab(t) {
+  document.querySelectorAll('.tab').forEach((b,i) =>
+    b.classList.toggle('active', i===(t==='calc'?0:1)));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  if (t === 'history') renderHistory();
+}
+
+function renderHistory() {
+  const me = document.getElementById('metrics');
+  const hl = document.getElementById('history-list');
+
+  if (!records.length) {
+    me.innerHTML = '';
+    hl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>尚無紀錄，<br>請先計算並儲存電費</div>';
+    return;
+  }
+
+  const totals = records.map(r => Number(r.total));
+  const avg = Math.round(totals.reduce((a,b)=>a+b,0)/totals.length);
+  const maxR = records.reduce((a,b)=>Number(a.total)>Number(b.total)?a:b);
+  const minR = records.reduce((a,b)=>Number(a.total)<Number(b.total)?a:b);
+
+  me.innerHTML = `
+    <div class="metric"><div class="metric-label">紀錄月數</div><div class="metric-val">${records.length}<span style="font-size:14px;font-weight:400"> 月</span></div></div>
+    <div class="metric"><div class="metric-label">月平均</div><div class="metric-val">$${avg.toLocaleString()}</div></div>
+    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${Number(maxR.total).toLocaleString()}</div><div class="metric-sub">${maxR.month}</div></div>
+    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${Number(minR.total).toLocaleString()}</div><div class="metric-sub">${minR.month}</div></div>`;
+
+  hl.innerHTML = records.map(r => {
+    const units = [
+      {name:'2-1', cost:r['2-1cost'], kwh:r['2-1kwh']},
+      {name:'2-2', cost:r['2-2cost'], kwh:r['2-2kwh']},
+      {name:'3-1', cost:r['3-1cost'], kwh:r['3-1kwh']},
+      {name:'3-2', cost:r['3-2cost'], kwh:r['3-2kwh']},
+    ].filter(u => u.cost !== '' && u.cost !== undefined);
+
+    return `<div class="history-card">
+      <div class="history-header">
+        <div>
+          <div class="history-month">${r.month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span></div>
+          <div class="history-meta">${units.length} 戶　公用 $${Number(r.public||0).toLocaleString()}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="history-total">$${Number(r.total).toLocaleString()}</span>
+          <button class="del-btn" onclick="deleteRecord('${r.month}')">刪除</button>
+        </div>
+      </div>
+      <div class="history-body">
+        ${units.map(u=>`
+          <div class="history-unit-row">
+            <span class="h-unit-name">${u.name}</span>
+            <span class="h-unit-kwh">${u.kwh} 度</span>
+            <span class="h-unit-cost">$${Number(u.cost).toLocaleString()}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Export CSV ──
+function exportCSV() {
+  if (!records.length) { showToast('尚無紀錄'); return; }
+  const header = ['月份','季節','公用電費','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
+  const rows = records.map(r => [
+    r.month, r.season==='summer'?'夏季':'非夏季', r.public||0,
+    r['2-1cost']||'', r['2-1kwh']||'',
+    r['2-2cost']||'', r['2-2kwh']||'',
+    r['3-1cost']||'', r['3-1kwh']||'',
+    r['3-2cost']||'', r['3-2kwh']||'',
+    r.total
+  ]);
+  const csv = '\uFEFF' + [header,...rows].map(r=>r.join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download = '電費紀錄.csv'; a.click();
+}
+
+// ── Toast ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Enter key on password
+document.getElementById('pw-input').focus();
+</script>
+</body>
+</html>
