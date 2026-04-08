@@ -409,10 +409,7 @@
           <span class="field-label">計費月份</span>
           <input type="month" id="bill-month">
         </div>
-        <div class="field-row">
-          <span class="field-label">公用電費（元）</span>
-          <input type="number" id="public-fee" value="0" min="0" oninput="calc()">
-        </div>
+
       </div>
 
       <div class="card">
@@ -427,7 +424,9 @@
       <div class="card">
         <div class="card-label">電表讀數</div>
         <div class="meter-header">
-          <span>戶別</span><span>上期電表</span><span>本期電表</span>
+          <span>戶別</span>
+          <span><input type="text" id="date-prev" placeholder="上期日期" value="" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
+          <span><input type="text" id="date-curr" placeholder="本期日期" value="" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
         </div>
         <div id="meter-inputs"></div>
       </div>
@@ -460,7 +459,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyUP9q-d8iSvjaraFE-k8IXHxZ9KhxuMQw-rggxXso-u6qoHCs7r0D_hjOrHJjwl_Hs/exec';
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzJHTQNZ2e3FMUaXaU9QhMOc-9YbVuW_t9b1MW1wdFe2JXE_xc68-h6WzBZHgOnMw/exec';
 const PASSWORD = 'sweet16';
 const UNITS = ['2-1','2-2','3-1','3-2'];
 
@@ -491,11 +490,28 @@ function unlock() {
 function init() {
   renderMeterInputs();
   const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth() + 1;
   document.getElementById('bill-month').value =
-    `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+    `${y}-${String(m).padStart(2,'0')}`;
+  document.getElementById('bill-month').addEventListener('change', updateDateDefaults);
+  updateDateDefaults();
   updateRateHint();
   calc();
   loadFromSheets();
+}
+
+function updateDateDefaults() {
+  const val = document.getElementById('bill-month').value;
+  if (!val) return;
+  const [y, m] = val.split('-').map(Number);
+  // 上期：上個月最後一天
+  const lastDayPrev = new Date(y, m - 1, 0).getDate();
+  const prevMonth = m === 1 ? 12 : m - 1;
+  document.getElementById('date-prev').value = `${prevMonth}/${lastDayPrev}`;
+  // 本期：這個月最後一天
+  const lastDayCurr = new Date(y, m, 0).getDate();
+  document.getElementById('date-curr').value = `${m}/${lastDayCurr}`;
 }
 
 // ── Season ──
@@ -536,7 +552,6 @@ function renderMeterInputs() {
 }
 
 function calc() {
-  const pub = parseFloat(document.getElementById('public-fee').value) || 0;
   lastRows = []; let anyData = false;
   UNITS.forEach((u,i) => {
     const prev = parseFloat(document.getElementById('prev'+i).value);
@@ -545,9 +560,7 @@ function calc() {
       anyData = true;
       const kwh = curr - prev;
       const {cost, detail} = calcUnit(kwh);
-      const share = +(pub / UNITS.length).toFixed(2);
-      const total = +(cost + share).toFixed(2);
-      lastRows.push({name:u, kwh, cost, share, total, detail, prev, curr});
+      lastRows.push({name:u, kwh, cost, total:cost, detail, prev, curr});
     }
   });
 
@@ -566,7 +579,6 @@ function calc() {
       </div>
       <div class="result-line"><span>用電量</span><span>${r.kwh} 度</span></div>
       <div class="result-line"><span>電費小計</span><span>$${r.cost.toFixed(2)}</span></div>
-      ${r.share > 0 ? `<div class="result-line"><span>公用攤分</span><span>$${r.share.toFixed(2)}</span></div>` : ''}
       <div class="tier-detail">${r.detail.map(d=>`${d.used}度×$${d.rate}=$${d.cost.toFixed(1)}`).join('　')}</div>
     </div>`).join('');
 }
@@ -610,9 +622,11 @@ async function saveRecord() {
   btn.disabled = true; btn.textContent = '儲存中...';
   setSyncStatus('loading', '儲存中...');
 
-  const pub = parseFloat(document.getElementById('public-fee').value) || 0;
+  const datePrev = document.getElementById('date-prev').value || '';
+  const dateCurr = document.getElementById('date-curr').value || '';
   const payload = {
-    action: 'save', month, season, public: pub,
+    action: 'save', month, season, public: 0,
+    datePrev, dateCurr,
     u1cost: getUnitVal('2-1','cost'), u1kwh: getUnitVal('2-1','kwh'),
     u2cost: getUnitVal('2-2','cost'), u2kwh: getUnitVal('2-2','kwh'),
     u3cost: getUnitVal('3-1','cost'), u3kwh: getUnitVal('3-1','kwh'),
@@ -694,7 +708,7 @@ function renderHistory() {
       <div class="history-header">
         <div>
           <div class="history-month">${r.month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span></div>
-          <div class="history-meta">${units.length} 戶　公用 $${Number(r.public||0).toLocaleString()}</div>
+          <div class="history-meta">${r.datePrev && r.dateCurr ? `${r.datePrev} ～ ${r.dateCurr}　` : ''}${units.length} 戶</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="history-total">$${Number(r.total).toLocaleString()}</span>
@@ -716,9 +730,9 @@ function renderHistory() {
 // ── Export CSV ──
 function exportCSV() {
   if (!records.length) { showToast('尚無紀錄'); return; }
-  const header = ['月份','季節','公用電費','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
+  const header = ['月份','季節','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
   const rows = records.map(r => [
-    r.month, r.season==='summer'?'夏季':'非夏季', r.public||0,
+    r.month, r.season==='summer'?'夏季':'非夏季',
     r['2-1cost']||'', r['2-1kwh']||'',
     r['2-2cost']||'', r['2-2kwh']||'',
     r['3-1cost']||'', r['3-1kwh']||'',
