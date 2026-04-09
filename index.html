@@ -7,381 +7,131 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #f5f4f0;
-    --surface: #ffffff;
-    --border: #e0ddd6;
-    --text: #1a1a18;
-    --muted: #7a7870;
-    --accent: #2d5a3d;
-    --accent-light: #eaf2ed;
-    --accent-muted: #5a8a6a;
-    --danger: #c0392b;
-    --danger-light: #fdf2f1;
-    --warning-bg: #fdf6e3;
-    --warning-text: #8a6500;
-    --radius: 10px;
-    --radius-sm: 6px;
-    --mono: 'DM Mono', monospace;
-    --sans: 'Noto Sans TC', sans-serif;
+    --bg:#f5f4f0;--surface:#fff;--border:#e0ddd6;--text:#1a1a18;--muted:#7a7870;
+    --accent:#2d5a3d;--accent-light:#eaf2ed;--accent-muted:#5a8a6a;
+    --danger:#c0392b;--danger-light:#fdf2f1;--warning-bg:#fdf6e3;--warning-text:#8a6500;
+    --radius:10px;--radius-sm:6px;--mono:'DM Mono',monospace;--sans:'Noto Sans TC',sans-serif;
   }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+  #lock-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;padding:2rem}
+  .lock-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem 2rem;width:100%;max-width:340px;text-align:center}
+  .lock-icon{width:52px;height:52px;background:var(--accent-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:22px}
+  .lock-title{font-size:17px;font-weight:700;margin-bottom:.25rem}
+  .lock-sub{font-size:13px;color:var(--muted);margin-bottom:1.5rem}
+  .lock-input{width:100%;padding:11px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:16px;font-family:var(--mono);letter-spacing:.1em;background:var(--bg);color:var(--text);margin-bottom:.75rem;text-align:center;transition:border-color .15s}
+  .lock-input:focus{outline:none;border-color:var(--accent)}
+  .lock-btn{width:100%;padding:11px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:15px;font-weight:500;font-family:var(--sans);cursor:pointer;transition:opacity .15s}
+  .lock-btn:hover{opacity:.88}
+  .lock-error{font-size:13px;color:var(--danger);margin-top:.6rem;min-height:18px}
 
-  body {
-    font-family: var(--sans);
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    font-size: 15px;
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-  }
+  #app{display:none}
+  .header{background:var(--surface);border-bottom:1px solid var(--border);padding:.9rem 1.25rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+  .header-title{font-size:16px;font-weight:700}
+  .header-sub{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .sync-status{font-size:11px;color:var(--muted);font-family:var(--mono);display:flex;align-items:center;gap:5px}
+  .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--muted)}
+  .sync-dot.ok{background:#27ae60}
+  .sync-dot.loading{background:#f39c12;animation:pulse 1s infinite}
+  .sync-dot.err{background:var(--danger)}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-  /* ── Lock Screen ── */
-  #lock-screen {
-    position: fixed; inset: 0;
-    background: var(--bg);
-    display: flex; align-items: center; justify-content: center;
-    z-index: 100;
-    padding: 2rem;
-  }
-  .lock-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 2.5rem 2rem;
-    width: 100%; max-width: 340px;
-    text-align: center;
-  }
-  .lock-icon {
-    width: 52px; height: 52px;
-    background: var(--accent-light);
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    margin: 0 auto 1.25rem;
-    font-size: 22px;
-  }
-  .lock-title {
-    font-size: 17px; font-weight: 700;
-    margin-bottom: .25rem;
-  }
-  .lock-sub {
-    font-size: 13px; color: var(--muted);
-    margin-bottom: 1.5rem;
-  }
-  .lock-input {
-    width: 100%;
-    padding: 11px 14px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 16px;
-    font-family: var(--mono);
-    letter-spacing: .1em;
-    background: var(--bg);
-    color: var(--text);
-    margin-bottom: .75rem;
-    text-align: center;
-    transition: border-color .15s;
-  }
-  .lock-input:focus { outline: none; border-color: var(--accent); }
-  .lock-btn {
-    width: 100%;
-    padding: 11px;
-    background: var(--accent);
-    color: #fff;
-    border: none;
-    border-radius: var(--radius-sm);
-    font-size: 15px;
-    font-weight: 500;
-    font-family: var(--sans);
-    cursor: pointer;
-    transition: opacity .15s;
-  }
-  .lock-btn:hover { opacity: .88; }
-  .lock-error {
-    font-size: 13px; color: var(--danger);
-    margin-top: .6rem; min-height: 18px;
-  }
+  .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border)}
+  .tab{flex:1;padding:11px;font-size:13px;font-weight:500;text-align:center;cursor:pointer;border:none;background:transparent;color:var(--muted);font-family:var(--sans);border-bottom:2px solid transparent;transition:all .15s}
+  .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 
-  /* ── App Shell ── */
-  #app { display: none; }
+  .content{padding:1rem;max-width:600px;margin:0 auto}
+  .panel{display:none}.panel.active{display:block}
 
-  .header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: .9rem 1.25rem;
-    display: flex; align-items: center; justify-content: space-between;
-    position: sticky; top: 0; z-index: 10;
-  }
-  .header-title {
-    font-size: 16px; font-weight: 700;
-    letter-spacing: .01em;
-  }
-  .header-sub {
-    font-size: 11px; color: var(--muted);
-    font-family: var(--mono);
-  }
-  .sync-status {
-    font-size: 11px;
-    color: var(--muted);
-    font-family: var(--mono);
-    display: flex; align-items: center; gap: 5px;
-  }
-  .sync-dot {
-    width: 6px; height: 6px;
-    border-radius: 50%;
-    background: var(--muted);
-  }
-  .sync-dot.ok { background: #27ae60; }
-  .sync-dot.loading { background: #f39c12; animation: pulse 1s infinite; }
-  .sync-dot.err { background: var(--danger); }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1.1rem;margin-bottom:.75rem}
+  .card-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.75rem}
 
-  /* ── Tabs ── */
-  .tabs {
-    display: flex;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-  }
-  .tab {
-    flex: 1; padding: 11px;
-    font-size: 13px; font-weight: 500;
-    text-align: center; cursor: pointer;
-    border: none; background: transparent;
-    color: var(--muted);
-    font-family: var(--sans);
-    border-bottom: 2px solid transparent;
-    transition: all .15s;
-  }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .season-wrap{display:flex;gap:6px;margin-bottom:.9rem}
+  .season-btn{flex:1;padding:8px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;background:transparent;color:var(--muted);font-family:var(--sans);font-weight:500;transition:all .15s}
+  .season-btn.active{background:var(--accent-light);color:var(--accent);border-color:var(--accent-muted)}
 
-  /* ── Content ── */
-  .content { padding: 1rem; max-width: 600px; margin: 0 auto; }
-  .panel { display: none; }
-  .panel.active { display: block; }
+  .mode-toggle{display:flex;gap:6px;margin-bottom:.5rem}
+  .mode-btn{flex:1;padding:7px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;cursor:pointer;background:transparent;color:var(--muted);font-family:var(--sans);font-weight:500;transition:all .15s}
+  .mode-btn.active{background:var(--warning-bg);color:var(--warning-text);border-color:#e6c84a}
+  .mode-note{font-size:11px;color:var(--muted);margin-bottom:.75rem}
 
-  /* ── Cards ── */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 1.1rem 1.1rem;
-    margin-bottom: .75rem;
-  }
-  .card-label {
-    font-size: 10px; font-weight: 700;
-    letter-spacing: .1em; text-transform: uppercase;
-    color: var(--muted); margin-bottom: .75rem;
-  }
+  .field-row{display:flex;align-items:center;gap:10px;margin-bottom:.6rem}
+  .field-label{font-size:13px;color:var(--muted);white-space:nowrap;min-width:110px}
+  input[type=number],input[type=month]{padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:14px;font-weight:500;font-family:var(--mono);color:var(--text);background:var(--bg);transition:border-color .15s}
+  input[type=number]:focus,input[type=month]:focus{outline:none;border-color:var(--accent)}
+  input[type=number]{width:120px}
+  input[type=month]{width:150px}
 
-  /* ── Season Toggle ── */
-  .season-wrap { display: flex; gap: 6px; margin-bottom: .9rem; }
-  .season-btn {
-    flex: 1; padding: 8px 6px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 12px; cursor: pointer;
-    background: transparent; color: var(--muted);
-    font-family: var(--sans); font-weight: 500;
-    transition: all .15s;
-  }
-  .season-btn.active {
-    background: var(--accent-light);
-    color: var(--accent);
-    border-color: var(--accent-muted);
-  }
+  .meter-header{display:grid;grid-template-columns:62px 1fr 1fr;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  .meter-header span{font-size:11px;color:var(--muted);text-align:center}
+  .meter-header span:first-child{text-align:left}
+  .meter-row{display:grid;grid-template-columns:62px 1fr 1fr;gap:6px;align-items:center;margin-bottom:8px}
+  .meter-row input{width:100%;text-align:center}
+  .unit-tag{font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);background:var(--accent-light);padding:4px 8px;border-radius:var(--radius-sm);text-align:center}
+  .divider-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;padding:8px 0 4px;border-top:1px solid var(--border);margin-top:4px;margin-bottom:6px}
 
-  /* ── Form elements ── */
-  .field-row {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: .6rem;
-  }
-  .field-label {
-    font-size: 13px; color: var(--muted);
-    white-space: nowrap; min-width: 110px;
-  }
-  input[type=number], input[type=month] {
-    padding: 8px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    font-size: 14px; font-weight: 500;
-    font-family: var(--mono);
-    color: var(--text);
-    background: var(--bg);
-    transition: border-color .15s;
-  }
-  input[type=number]:focus, input[type=month]:focus {
-    outline: none; border-color: var(--accent);
-  }
-  input[type=number] { width: 120px; }
-  input[type=month] { width: 150px; }
+  .result-block{background:var(--bg);border-radius:var(--radius-sm);padding:.85rem 1rem;margin-bottom:8px}
+  .result-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px}
+  .result-name{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--accent)}
+  .result-amount{font-size:18px;font-weight:700;font-family:var(--mono)}
+  .result-line{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);padding:3px 0;border-bottom:1px solid var(--border)}
+  .result-line:last-of-type{border-bottom:none}
+  .result-line span:last-child{font-family:var(--mono);color:var(--text);font-weight:500}
+  .tier-detail{font-size:11px;color:var(--muted);margin-top:6px;font-family:var(--mono);line-height:1.8}
+  .total-bar{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0 4px;border-top:1px solid var(--border);margin-top:4px}
+  .total-label{font-size:13px;color:var(--muted)}
+  .total-amount{font-size:28px;font-weight:700;font-family:var(--mono);color:var(--accent)}
+  .btn-row{display:flex;gap:8px;margin-top:.9rem;justify-content:flex-end}
+  .btn{padding:9px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text);font-family:var(--sans);transition:all .15s}
+  .btn:hover{background:var(--bg)}
+  .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .btn-primary:hover{opacity:.88}
+  .btn-primary:disabled{opacity:.45;cursor:not-allowed}
 
-  /* ── Meter grid ── */
-  .meter-header {
-    display: grid; grid-template-columns: 62px 1fr 1fr;
-    gap: 6px; margin-bottom: 8px;
-    padding-bottom: 6px; border-bottom: 1px solid var(--border);
-  }
-  .meter-header span { font-size: 11px; color: var(--muted); text-align: center; }
-  .meter-header span:first-child { text-align: left; }
-  .meter-row {
-    display: grid; grid-template-columns: 62px 1fr 1fr;
-    gap: 6px; align-items: center; margin-bottom: 8px;
-  }
-  .meter-row input { width: 100%; text-align: center; }
-  .unit-tag {
-    font-size: 13px; font-weight: 700;
-    color: var(--accent);
-    font-family: var(--mono);
-    background: var(--accent-light);
-    padding: 4px 8px; border-radius: var(--radius-sm);
-    text-align: center;
-  }
+  .metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:.75rem}
+  .metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.85rem 1rem}
+  .metric-label{font-size:11px;color:var(--muted);margin-bottom:4px}
+  .metric-val{font-size:20px;font-weight:700;font-family:var(--mono)}
+  .metric-sub{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px}
 
-  /* ── Result ── */
-  .result-block {
-    background: var(--bg);
-    border-radius: var(--radius-sm);
-    padding: .85rem 1rem;
-    margin-bottom: 8px;
-  }
-  .result-top {
-    display: flex; justify-content: space-between; align-items: baseline;
-    margin-bottom: 8px;
-  }
-  .result-name { font-size: 13px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
-  .result-amount { font-size: 18px; font-weight: 700; font-family: var(--mono); }
-  .result-line {
-    display: flex; justify-content: space-between;
-    font-size: 12px; color: var(--muted);
-    padding: 3px 0; border-bottom: 1px solid var(--border);
-  }
-  .result-line:last-child { border-bottom: none; }
-  .result-line span:last-child { font-family: var(--mono); color: var(--text); font-weight: 500; }
-  .tier-detail { font-size: 11px; color: var(--muted); margin-top: 6px; font-family: var(--mono); line-height: 1.8; }
-
-  .total-bar {
-    display: flex; justify-content: space-between; align-items: baseline;
-    padding: 12px 0 4px; border-top: 1px solid var(--border); margin-top: 4px;
-  }
-  .total-label { font-size: 13px; color: var(--muted); }
-  .total-amount { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
-
-  .btn-row { display: flex; gap: 8px; margin-top: .9rem; justify-content: flex-end; }
-  .btn {
-    padding: 9px 18px;
-    border-radius: var(--radius-sm);
-    font-size: 13px; font-weight: 500;
-    cursor: pointer; border: 1px solid var(--border);
-    background: transparent; color: var(--text);
-    font-family: var(--sans);
-    transition: all .15s;
-  }
-  .btn:hover { background: var(--bg); }
-  .btn-primary {
-    background: var(--accent); color: #fff;
-    border-color: var(--accent);
-  }
-  .btn-primary:hover { opacity: .88; }
-  .btn-primary:disabled { opacity: .45; cursor: not-allowed; }
-
-  /* ── History ── */
-  .metrics-grid {
-    display: grid; grid-template-columns: repeat(2, 1fr);
-    gap: 8px; margin-bottom: .75rem;
-  }
-  .metric {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: .85rem 1rem;
-  }
-  .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
-  .metric-val { font-size: 20px; font-weight: 700; font-family: var(--mono); }
-  .metric-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 2px; }
-
-  .history-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    margin-bottom: 8px;
-    overflow: hidden;
-  }
-  .history-header {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: .85rem 1rem;
-    cursor: pointer;
-    border-bottom: 1px solid var(--border);
-  }
-  .history-month { font-size: 15px; font-weight: 700; font-family: var(--mono); }
-  .history-total { font-size: 17px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
-  .history-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
-  .history-body { padding: .75rem 1rem; }
-  .history-unit-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 5px 0; border-bottom: 1px solid var(--border);
-    font-size: 13px;
-  }
-  .history-unit-row:last-child { border-bottom: none; }
-  .h-unit-name { font-family: var(--mono); font-weight: 700; color: var(--accent); font-size: 12px; }
-  .h-unit-cost { font-family: var(--mono); font-weight: 500; }
-  .h-unit-kwh { font-size: 11px; color: var(--muted); font-family: var(--mono); }
-  .badge {
-    display: inline-block; padding: 2px 8px;
-    border-radius: 99px; font-size: 10px; font-weight: 700;
-    letter-spacing: .04em;
-  }
-  .badge-summer { background: var(--warning-bg); color: var(--warning-text); }
-  .badge-non { background: var(--accent-light); color: var(--accent); }
-
-  .del-btn {
-    font-size: 11px; padding: 3px 10px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    cursor: pointer; background: transparent; color: var(--muted);
-    font-family: var(--sans);
-    transition: all .15s;
-  }
-  .del-btn:hover { background: var(--danger-light); color: var(--danger); border-color: var(--danger); }
-
-  .empty-state {
-    text-align: center; padding: 3rem 1rem;
-    color: var(--muted); font-size: 14px;
-  }
-  .empty-icon { font-size: 36px; margin-bottom: 1rem; }
-
-  .history-actions {
-    display: flex; justify-content: flex-end; margin-bottom: .75rem;
-  }
-
-  .toast {
-    position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%);
-    background: var(--text); color: #fff;
-    padding: 10px 20px; border-radius: 99px;
-    font-size: 13px; font-weight: 500;
-    z-index: 200; opacity: 0;
-    transition: opacity .2s;
-    white-space: nowrap;
-  }
-  .toast.show { opacity: 1; }
+  .history-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:8px;overflow:hidden}
+  .history-header{display:flex;align-items:center;justify-content:space-between;padding:.85rem 1rem;border-bottom:1px solid var(--border)}
+  .history-month{font-size:15px;font-weight:700;font-family:var(--mono)}
+  .history-total{font-size:17px;font-weight:700;font-family:var(--mono);color:var(--accent)}
+  .history-meta{font-size:11px;color:var(--muted);margin-top:2px}
+  .history-body{padding:.75rem 1rem}
+  .history-unit-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .history-unit-row:last-child{border-bottom:none}
+  .h-unit-name{font-family:var(--mono);font-weight:700;color:var(--accent);font-size:12px}
+  .h-unit-cost{font-family:var(--mono);font-weight:500}
+  .h-unit-kwh{font-size:11px;color:var(--muted);font-family:var(--mono)}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.04em}
+  .badge-summer{background:var(--warning-bg);color:var(--warning-text)}
+  .badge-non{background:var(--accent-light);color:var(--accent)}
+  .badge-modeB{background:var(--warning-bg);color:var(--warning-text)}
+  .del-btn{font-size:11px;padding:3px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;background:transparent;color:var(--muted);font-family:var(--sans);transition:all .15s}
+  .del-btn:hover{background:var(--danger-light);color:var(--danger);border-color:var(--danger)}
+  .empty-state{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:14px}
+  .empty-icon{font-size:36px;margin-bottom:1rem}
+  .history-actions{display:flex;justify-content:flex-end;margin-bottom:.75rem}
+  .toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:500;z-index:200;opacity:0;transition:opacity .2s;white-space:nowrap}
+  .toast.show{opacity:1}
 </style>
 </head>
 <body>
 
-<!-- Lock Screen -->
 <div id="lock-screen">
   <div class="lock-box">
     <div class="lock-icon">🔒</div>
     <div class="lock-title">電費管理系統</div>
     <div class="lock-sub">請輸入密碼以繼續</div>
-    <input class="lock-input" type="password" id="pw-input" placeholder="••••••••" maxlength="30"
-      onkeydown="if(event.key==='Enter')unlock()">
+    <input class="lock-input" type="password" id="pw-input" placeholder="••••••••" maxlength="30" onkeydown="if(event.key==='Enter')unlock()">
     <button class="lock-btn" onclick="unlock()">進入</button>
     <div class="lock-error" id="lock-error"></div>
   </div>
 </div>
 
-<!-- App -->
 <div id="app">
   <div class="header">
     <div>
@@ -400,16 +150,14 @@
   </div>
 
   <div class="content">
-
-    <!-- Calc Panel -->
     <div class="panel active" id="panel-calc">
+
       <div class="card">
         <div class="card-label">基本設定</div>
         <div class="field-row">
           <span class="field-label">計費月份</span>
           <input type="month" id="bill-month">
         </div>
-
       </div>
 
       <div class="card">
@@ -425,10 +173,22 @@
         <div class="card-label">電表讀數</div>
         <div class="meter-header">
           <span>戶別</span>
-          <span><input type="text" id="date-prev" placeholder="上期日期" value="" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
-          <span><input type="text" id="date-curr" placeholder="本期日期" value="" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
+          <span><input type="text" id="date-prev" placeholder="上期日期" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
+          <span><input type="text" id="date-curr" placeholder="本期日期" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
         </div>
-        <div id="meter-inputs"></div>
+
+        <div class="divider-label">2F 計費模式</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" onclick="setMode('A')">模式 A｜各自獨立計算</button>
+          <button class="mode-btn" onclick="setMode('B')">模式 B｜共用階段額度</button>
+        </div>
+        <div class="mode-note" id="mode-note">各戶獨立累進計算</div>
+
+        <div class="divider-label">2F</div>
+        <div id="meter-inputs-2f"></div>
+
+        <div class="divider-label">3F</div>
+        <div id="meter-inputs-3f"></div>
       </div>
 
       <div class="card" id="result-card" style="display:none">
@@ -442,9 +202,9 @@
           <button class="btn btn-primary" id="save-btn" onclick="saveRecord()">儲存本月紀錄</button>
         </div>
       </div>
+
     </div>
 
-    <!-- History Panel -->
     <div class="panel" id="panel-history">
       <div class="metrics-grid" id="metrics"></div>
       <div class="history-actions">
@@ -452,263 +212,308 @@
       </div>
       <div id="history-list"></div>
     </div>
-
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzW75UtuU1R6TwPHCuHffJVsJDMIsVxKmT1QoTvtFnarDSKNKP9C8O-fFfUxZdaR1Nu/exec';
-const PASSWORD = 'sweet16';
-const UNITS = ['2-1','2-2','3-1','3-2'];
-
-const TIERS = {
-  non:    [{max:60,rate:1.63},{max:105,rate:2.10},{max:85,rate:2.89},{max:100,rate:3.94},{max:150,rate:4.74},{max:500,rate:6.03}],
-  summer: [{max:60,rate:1.63},{max:105,rate:2.38},{max:85,rate:3.52},{max:100,rate:4.80},{max:150,rate:5.83},{max:500,rate:7.69}]
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzW75UtuU1R6TwPHCuHffJVsJDMIsVxKmT1QoTvtFnarDSKNKP9C8O-fFfUxZdaR1Nu/exec';
+const PASSWORD='sweet16';
+const UNITS_2F=['2-1','2-2'];
+const UNITS_3F=['3-1','3-2'];
+const TIERS={
+  non:[{max:60,rate:1.63},{max:105,rate:2.10},{max:85,rate:2.89},{max:100,rate:3.94},{max:150,rate:4.74},{max:500,rate:6.03}],
+  summer:[{max:60,rate:1.63},{max:105,rate:2.38},{max:85,rate:3.52},{max:100,rate:4.80},{max:150,rate:5.83},{max:500,rate:7.69}]
 };
 
-let season = 'non';
-let lastRows = [];
-let records = [];
+let season='non', billingMode='A', lastRows=[], records=[];
 
-// ── Auth ──
-function unlock() {
-  const val = document.getElementById('pw-input').value;
-  if (val === PASSWORD) {
-    document.getElementById('lock-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
+function unlock(){
+  const val=document.getElementById('pw-input').value;
+  if(val===PASSWORD){
+    document.getElementById('lock-screen').style.display='none';
+    document.getElementById('app').style.display='block';
     init();
   } else {
-    document.getElementById('lock-error').textContent = '密碼錯誤，請再試一次';
-    document.getElementById('pw-input').value = '';
+    document.getElementById('lock-error').textContent='密碼錯誤，請再試一次';
+    document.getElementById('pw-input').value='';
     document.getElementById('pw-input').focus();
   }
 }
 
-// ── Init ──
-function init() {
+function init(){
   renderMeterInputs();
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  document.getElementById('bill-month').value =
-    `${y}-${String(m).padStart(2,'0')}`;
-  document.getElementById('bill-month').addEventListener('change', updateDateDefaults);
+  const now=new Date();
+  const y=now.getFullYear(), m=now.getMonth()+1;
+  document.getElementById('bill-month').value=`${y}-${String(m).padStart(2,'0')}`;
+  document.getElementById('bill-month').addEventListener('change',()=>{
+    updateDateDefaults();
+    autoFillPrevMeters();
+  });
   updateDateDefaults();
   updateRateHint();
   calc();
   loadFromSheets();
 }
 
-function updateDateDefaults() {
-  const val = document.getElementById('bill-month').value;
-  if (!val) return;
-  const [y, m] = val.split('-').map(Number);
-  // 上期：上個月最後一天
-  const lastDayPrev = new Date(y, m - 1, 0).getDate();
-  const prevMonth = m === 1 ? 12 : m - 1;
-  document.getElementById('date-prev').value = `${prevMonth}/${lastDayPrev}`;
-  // 本期：這個月最後一天
-  const lastDayCurr = new Date(y, m, 0).getDate();
-  document.getElementById('date-curr').value = `${m}/${lastDayCurr}`;
+function updateDateDefaults(){
+  const val=document.getElementById('bill-month').value;
+  if(!val)return;
+  const [y,m]=val.split('-').map(Number);
+  const prevMonth=m===1?12:m-1;
+  const prevYear=m===1?y-1:y;
+  const lastDayPrev=new Date(prevYear,prevMonth,0).getDate();
+  document.getElementById('date-prev').value=`${prevMonth}/${lastDayPrev}`;
+  const lastDayCurr=new Date(y,m,0).getDate();
+  document.getElementById('date-curr').value=`${m}/${lastDayCurr}`;
 }
 
-// ── Season ──
-function setSeason(s) {
-  season = s;
-  document.querySelectorAll('.season-btn').forEach((b,i) =>
-    b.classList.toggle('active', i === (s==='non'?0:1)));
+// 自動帶入上期電表（從上個月紀錄的 curr 欄位）
+function autoFillPrevMeters(){
+  const val=document.getElementById('bill-month').value;
+  if(!val||!records.length)return;
+  const [y,m]=val.split('-').map(Number);
+  const prevM=m===1?12:m-1;
+  const prevY=m===1?y-1:y;
+  const prevMonthStr=`${prevY}-${String(prevM).padStart(2,'0')}`;
+  const prev=records.find(r=>r.month===prevMonthStr);
+  if(!prev)return;
+  // 從紀錄帶入上期本期電表數字到「上期」欄
+  const map=[['2-1','u1curr'],['2-2','u2curr'],['3-1','u3curr'],['3-2','u4curr']];
+  map.forEach(([name,key],i)=>{
+    const v=prev[key];
+    if(v!==undefined&&v!==''){
+      document.getElementById('prev'+i).value=v;
+    }
+  });
+  calc();
+}
+
+function setMode(m){
+  billingMode=m;
+  document.querySelectorAll('.mode-btn').forEach((b,i)=>b.classList.toggle('active',i===(m==='A'?0:1)));
+  document.getElementById('mode-note').textContent=
+    m==='A'?'各戶獨立累進計算':'2-1 與 2-2 共用每階段額度，用量少的那戶費用與模式 A 相同';
+  calc();
+}
+
+function setSeason(s){
+  season=s;
+  document.querySelectorAll('.season-btn').forEach((b,i)=>b.classList.toggle('active',i===(s==='non'?0:1)));
   updateRateHint();
   calc();
 }
 
-function updateRateHint() {
-  const t = TIERS[season];
-  document.getElementById('rate-hint').textContent =
-    t.map(x=>`$${x.rate}/度(前${x.max}度)`).join('  ');
+function updateRateHint(){
+  document.getElementById('rate-hint').textContent=
+    TIERS[season].map(x=>`$${x.rate}/度(前${x.max}度)`).join('  ');
 }
 
-// ── Calc ──
-function calcUnit(kwh) {
-  const t = TIERS[season]; let rem = kwh, cost = 0; const detail = [];
-  for (const tier of t) {
-    if (rem <= 0) break;
-    const used = Math.min(rem, tier.max);
-    const c = +(used * tier.rate).toFixed(2);
-    if (used > 0) detail.push({used, rate:tier.rate, cost:c});
-    cost += c; rem -= used;
+function calcUnit(kwh){
+  const t=TIERS[season];let rem=kwh,cost=0;const detail=[];
+  for(const tier of t){
+    if(rem<=0)break;
+    const used=Math.min(rem,tier.max);
+    const c=+(used*tier.rate).toFixed(2);
+    if(used>0)detail.push({used,rate:tier.rate,cost:c});
+    cost+=c;rem-=used;
   }
-  return {cost: +cost.toFixed(2), detail};
+  return{cost:+cost.toFixed(2),detail};
 }
 
-function renderMeterInputs() {
-  document.getElementById('meter-inputs').innerHTML = UNITS.map((u,i) => `
+// 模式B：兩戶共用每階段上限
+// 用量少的戶費用 = 模式A（不變）
+// 用量多的戶可借用另一戶未用完的低階段額度
+function calcModeB(kwhA,kwhB){
+  const t=TIERS[season];
+  const isAHigh=kwhA>=kwhB;
+  const kwhHigh=isAHigh?kwhA:kwhB;
+  const kwhLow=isAHigh?kwhB:kwhA;
+  const lowResult=calcUnit(kwhLow);
+  let remHigh=kwhHigh,remLow=kwhLow,costHigh=0;
+  const detailHigh=[];
+  for(const tier of t){
+    if(remHigh<=0)break;
+    const lowUsed=Math.min(remLow,tier.max);
+    const avail=tier.max*2-lowUsed;
+    const used=Math.min(remHigh,avail);
+    const c=+(used*tier.rate).toFixed(2);
+    if(used>0)detailHigh.push({used,rate:tier.rate,cost:c});
+    costHigh+=c;
+    remHigh-=used;
+    remLow=Math.max(0,remLow-tier.max);
+  }
+  costHigh=+costHigh.toFixed(2);
+  const highResult={cost:costHigh,detail:detailHigh};
+  return{
+    resultFor2_1:isAHigh?highResult:lowResult,
+    resultFor2_2:isAHigh?lowResult:highResult
+  };
+}
+
+function renderMeterInputs(){
+  document.getElementById('meter-inputs-2f').innerHTML=UNITS_2F.map((u,i)=>`
     <div class="meter-row">
       <div class="unit-tag">${u}</div>
       <input type="number" id="prev${i}" placeholder="上期" min="0" oninput="calc()">
       <input type="number" id="curr${i}" placeholder="本期" min="0" oninput="calc()">
     </div>`).join('');
+  document.getElementById('meter-inputs-3f').innerHTML=UNITS_3F.map((u,i)=>`
+    <div class="meter-row">
+      <div class="unit-tag">${u}</div>
+      <input type="number" id="prev${i+2}" placeholder="上期" min="0" oninput="calc()">
+      <input type="number" id="curr${i+2}" placeholder="本期" min="0" oninput="calc()">
+    </div>`).join('');
 }
 
-function calc() {
-  lastRows = []; let anyData = false;
-  UNITS.forEach((u,i) => {
-    const prev = parseFloat(document.getElementById('prev'+i).value);
-    const curr = parseFloat(document.getElementById('curr'+i).value);
-    if (!isNaN(prev) && !isNaN(curr) && curr >= prev) {
-      anyData = true;
-      const kwh = curr - prev;
-      const {cost, detail} = calcUnit(kwh);
-      lastRows.push({name:u, kwh, cost, total:cost, detail, prev, curr});
-    }
+function readMeter(i){
+  const prev=parseFloat(document.getElementById('prev'+i).value);
+  const curr=parseFloat(document.getElementById('curr'+i).value);
+  if(!isNaN(prev)&&!isNaN(curr)&&curr>=prev)return{valid:true,kwh:curr-prev,prev,curr};
+  return{valid:false};
+}
+
+function calc(){
+  lastRows=[];let anyData=false;
+  const v0=readMeter(0),v1=readMeter(1),v2=readMeter(2),v3=readMeter(3);
+
+  // 2F
+  if(v0.valid&&v1.valid&&billingMode==='B'){
+    anyData=true;
+    const{resultFor2_1,resultFor2_2}=calcModeB(v0.kwh,v1.kwh);
+    lastRows.push({name:'2-1',kwh:v0.kwh,cost:resultFor2_1.cost,total:resultFor2_1.cost,detail:resultFor2_1.detail,prev:v0.prev,curr:v0.curr,modeB:true});
+    lastRows.push({name:'2-2',kwh:v1.kwh,cost:resultFor2_2.cost,total:resultFor2_2.cost,detail:resultFor2_2.detail,prev:v1.prev,curr:v1.curr,modeB:true});
+  } else {
+    [['2-1',v0],['2-2',v1]].forEach(([name,v])=>{
+      if(v.valid){anyData=true;const{cost,detail}=calcUnit(v.kwh);lastRows.push({name,kwh:v.kwh,cost,total:cost,detail,prev:v.prev,curr:v.curr});}
+    });
+  }
+  // 3F 永遠獨立計算
+  [['3-1',v2],['3-2',v3]].forEach(([name,v])=>{
+    if(v.valid){anyData=true;const{cost,detail}=calcUnit(v.kwh);lastRows.push({name,kwh:v.kwh,cost,total:cost,detail,prev:v.prev,curr:v.curr});}
   });
 
-  const rc = document.getElementById('result-card');
-  if (!anyData) { rc.style.display='none'; return; }
-  rc.style.display = 'block';
-
-  const grand = lastRows.reduce((s,r) => s+r.total, 0);
-  document.getElementById('grand-total').textContent = '$' + Math.round(grand).toLocaleString();
-
-  document.getElementById('results').innerHTML = lastRows.map(r => `
+  const rc=document.getElementById('result-card');
+  if(!anyData){rc.style.display='none';return;}
+  rc.style.display='block';
+  const grand=lastRows.reduce((s,r)=>s+r.total,0);
+  document.getElementById('grand-total').textContent='$'+Math.round(grand).toLocaleString();
+  document.getElementById('results').innerHTML=lastRows.map(r=>`
     <div class="result-block">
       <div class="result-top">
-        <span class="result-name">${r.name}</span>
+        <span class="result-name">${r.name}${r.modeB?' <span style="font-size:10px;background:var(--warning-bg);color:var(--warning-text);padding:1px 6px;border-radius:99px;font-family:var(--sans)">模式B</span>':''}</span>
         <span class="result-amount">$${Math.round(r.total).toLocaleString()}</span>
       </div>
       <div class="result-line"><span>用電量</span><span>${r.kwh} 度</span></div>
-      <div class="result-line"><span>電費小計</span><span>$${r.cost.toFixed(2)}</span></div>
+      <div class="result-line"><span>電費</span><span>$${r.cost.toFixed(2)}</span></div>
       <div class="tier-detail">${r.detail.map(d=>`${d.used}度×$${d.rate}=$${d.cost.toFixed(1)}`).join('　')}</div>
     </div>`).join('');
 }
 
-// ── Sync ──
-function setSyncStatus(state, text) {
-  const dot = document.getElementById('sync-dot');
-  dot.className = 'sync-dot' + (state ? ' '+state : '');
-  document.getElementById('sync-text').textContent = text;
+function setSyncStatus(state,text){
+  document.getElementById('sync-dot').className='sync-dot'+(state?' '+state:'');
+  document.getElementById('sync-text').textContent=text;
 }
 
-async function loadFromSheets() {
-  setSyncStatus('loading', '同步中...');
-  try {
-    const res = await fetch(SCRIPT_URL);
-    const json = await res.json();
-    if (json.status === 'ok') {
-      records = json.data || [];
-      setSyncStatus('ok', '已同步');
-    } else { throw new Error(); }
-  } catch {
-    setSyncStatus('err', '同步失敗');
-  }
+async function loadFromSheets(){
+  setSyncStatus('loading','同步中...');
+  try{
+    const res=await fetch(SCRIPT_URL);
+    const json=await res.json();
+    if(json.status==='ok'){records=json.data||[];setSyncStatus('ok','已同步');}
+    else throw new Error();
+  }catch{setSyncStatus('err','同步失敗');}
 }
 
-async function apiPost(payload) {
-  const res = await fetch(SCRIPT_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  });
+async function apiPost(payload){
+  const res=await fetch(SCRIPT_URL,{method:'POST',body:JSON.stringify(payload)});
   return res.json();
 }
 
-// ── Save ──
-async function saveRecord() {
-  if (!lastRows.length) { showToast('請先填入電表數字'); return; }
-  const month = document.getElementById('bill-month').value;
-  if (!month) { showToast('請選擇計費月份'); return; }
+function getUnitVal(name,field){
+  const r=lastRows.find(x=>x.name===name);
+  return r?(field==='cost'?Math.round(r.total):field==='curr'?r.curr:r.kwh):'';
+}
 
-  const btn = document.getElementById('save-btn');
-  btn.disabled = true; btn.textContent = '儲存中...';
-  setSyncStatus('loading', '儲存中...');
-
-  const datePrev = document.getElementById('date-prev').value || '';
-  const dateCurr = document.getElementById('date-curr').value || '';
-  const payload = {
-    action: 'save', month, season, public: 0,
-    datePrev, dateCurr,
-    u1cost: getUnitVal('2-1','cost'), u1kwh: getUnitVal('2-1','kwh'),
-    u2cost: getUnitVal('2-2','cost'), u2kwh: getUnitVal('2-2','kwh'),
-    u3cost: getUnitVal('3-1','cost'), u3kwh: getUnitVal('3-1','kwh'),
-    u4cost: getUnitVal('3-2','cost'), u4kwh: getUnitVal('3-2','kwh'),
-    total: Math.round(lastRows.reduce((s,r)=>s+r.total,0))
+async function saveRecord(){
+  if(!lastRows.length){showToast('請先填入電表數字');return;}
+  const month=document.getElementById('bill-month').value;
+  if(!month){showToast('請選擇計費月份');return;}
+  const btn=document.getElementById('save-btn');
+  btn.disabled=true;btn.textContent='儲存中...';
+  setSyncStatus('loading','儲存中...');
+  const payload={
+    action:'save',month,season,public:0,billingMode,
+    datePrev:document.getElementById('date-prev').value||'',
+    dateCurr:document.getElementById('date-curr').value||'',
+    u1cost:getUnitVal('2-1','cost'),u1kwh:getUnitVal('2-1','kwh'),u1curr:getUnitVal('2-1','curr'),
+    u2cost:getUnitVal('2-2','cost'),u2kwh:getUnitVal('2-2','kwh'),u2curr:getUnitVal('2-2','curr'),
+    u3cost:getUnitVal('3-1','cost'),u3kwh:getUnitVal('3-1','kwh'),u3curr:getUnitVal('3-1','curr'),
+    u4cost:getUnitVal('3-2','cost'),u4kwh:getUnitVal('3-2','kwh'),u4curr:getUnitVal('3-2','curr'),
+    total:Math.round(lastRows.reduce((s,r)=>s+r.total,0))
   };
-
-  try {
+  try{
     await apiPost(payload);
-    setSyncStatus('ok', '已儲存');
+    setSyncStatus('ok','已儲存');
     showToast(`${month} 電費紀錄已儲存`);
     await loadFromSheets();
     switchTab('history');
-  } catch {
-    setSyncStatus('err', '儲存失敗');
+  }catch{
+    setSyncStatus('err','儲存失敗');
     showToast('儲存失敗，請檢查網路');
   }
-  btn.disabled = false; btn.textContent = '儲存本月紀錄';
+  btn.disabled=false;btn.textContent='儲存本月紀錄';
 }
 
-function getUnitVal(name, field) {
-  const r = lastRows.find(x => x.name === name);
-  return r ? (field==='cost' ? Math.round(r.total) : r.kwh) : '';
-}
-
-// ── Delete ──
-async function deleteRecord(month) {
-  if (!confirm(`確定刪除 ${month} 的紀錄？`)) return;
-  setSyncStatus('loading', '刪除中...');
-  try {
-    await apiPost({action:'delete', month});
+async function deleteRecord(month){
+  if(!confirm(`確定刪除 ${month} 的紀錄？`))return;
+  setSyncStatus('loading','刪除中...');
+  try{
+    await apiPost({action:'delete',month});
     showToast(`${month} 已刪除`);
     await loadFromSheets();
     renderHistory();
-  } catch {
-    setSyncStatus('err', '刪除失敗');
-  }
+  }catch{setSyncStatus('err','刪除失敗');}
 }
 
-// ── History ──
-function switchTab(t) {
-  document.querySelectorAll('.tab').forEach((b,i) =>
-    b.classList.toggle('active', i===(t==='calc'?0:1)));
-  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',i===(t==='calc'?0:1)));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('panel-'+t).classList.add('active');
-  if (t === 'history') renderHistory();
+  if(t==='history')renderHistory();
 }
 
-function renderHistory() {
-  const me = document.getElementById('metrics');
-  const hl = document.getElementById('history-list');
-
-  if (!records.length) {
-    me.innerHTML = '';
-    hl.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div>尚無紀錄，<br>請先計算並儲存電費</div>';
+function renderHistory(){
+  const me=document.getElementById('metrics');
+  const hl=document.getElementById('history-list');
+  if(!records.length){
+    me.innerHTML='';
+    hl.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div>尚無紀錄，<br>請先計算並儲存電費</div>';
     return;
   }
-
-  const totals = records.map(r => Number(r.total));
-  const avg = Math.round(totals.reduce((a,b)=>a+b,0)/totals.length);
-  const maxR = records.reduce((a,b)=>Number(a.total)>Number(b.total)?a:b);
-  const minR = records.reduce((a,b)=>Number(a.total)<Number(b.total)?a:b);
-
-  me.innerHTML = `
+  const totals=records.map(r=>Number(r.total));
+  const avg=Math.round(totals.reduce((a,b)=>a+b,0)/totals.length);
+  const maxR=records.reduce((a,b)=>Number(a.total)>Number(b.total)?a:b);
+  const minR=records.reduce((a,b)=>Number(a.total)<Number(b.total)?a:b);
+  me.innerHTML=`
     <div class="metric"><div class="metric-label">紀錄月數</div><div class="metric-val">${records.length}<span style="font-size:14px;font-weight:400"> 月</span></div></div>
     <div class="metric"><div class="metric-label">月平均</div><div class="metric-val">$${avg.toLocaleString()}</div></div>
     <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${Number(maxR.total).toLocaleString()}</div><div class="metric-sub">${maxR.month}</div></div>
     <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${Number(minR.total).toLocaleString()}</div><div class="metric-sub">${minR.month}</div></div>`;
-
-  hl.innerHTML = records.map(r => {
-    const units = [
-      {name:'2-1', cost:r['2-1cost'], kwh:r['2-1kwh']},
-      {name:'2-2', cost:r['2-2cost'], kwh:r['2-2kwh']},
-      {name:'3-1', cost:r['3-1cost'], kwh:r['3-1kwh']},
-      {name:'3-2', cost:r['3-2cost'], kwh:r['3-2kwh']},
-    ].filter(u => u.cost !== '' && u.cost !== undefined);
-
-    return `<div class="history-card">
+  hl.innerHTML=records.map(r=>{
+    const units=[
+      {name:'2-1',cost:r['2-1cost'],kwh:r['2-1kwh']},
+      {name:'2-2',cost:r['2-2cost'],kwh:r['2-2kwh']},
+      {name:'3-1',cost:r['3-1cost'],kwh:r['3-1kwh']},
+      {name:'3-2',cost:r['3-2cost'],kwh:r['3-2kwh']},
+    ].filter(u=>u.cost!==''&&u.cost!==undefined&&u.cost!==null);
+    const modeTag=r.billingMode==='B'?' <span class="badge badge-modeB">2F模式B</span>':'';
+    return`<div class="history-card">
       <div class="history-header">
         <div>
-          <div class="history-month">${r.month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span></div>
-          <div class="history-meta">${r.datePrev && r.dateCurr ? `${r.datePrev} ～ ${r.dateCurr}　` : ''}${units.length} 戶</div>
+          <div class="history-month">${r.month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span>${modeTag}</div>
+          <div class="history-meta">${r.datePrev&&r.dateCurr?`${r.datePrev} ～ ${r.dateCurr}　`:''}${units.length} 戶</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="history-total">$${Number(r.total).toLocaleString()}</span>
@@ -727,32 +532,30 @@ function renderHistory() {
   }).join('');
 }
 
-// ── Export CSV ──
-function exportCSV() {
-  if (!records.length) { showToast('尚無紀錄'); return; }
-  const header = ['月份','季節','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
-  const rows = records.map(r => [
-    r.month, r.season==='summer'?'夏季':'非夏季',
-    r['2-1cost']||'', r['2-1kwh']||'',
-    r['2-2cost']||'', r['2-2kwh']||'',
-    r['3-1cost']||'', r['3-1kwh']||'',
-    r['3-2cost']||'', r['3-2kwh']||'',
+function exportCSV(){
+  if(!records.length){showToast('尚無紀錄');return;}
+  const header=['月份','季節','計費模式','上期日期','本期日期','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
+  const rows=records.map(r=>[
+    r.month,r.season==='summer'?'夏季':'非夏季',r.billingMode||'A',
+    r.datePrev||'',r.dateCurr||'',
+    r['2-1cost']||'',r['2-1kwh']||'',
+    r['2-2cost']||'',r['2-2kwh']||'',
+    r['3-1cost']||'',r['3-1kwh']||'',
+    r['3-2cost']||'',r['3-2kwh']||'',
     r.total
   ]);
-  const csv = '\uFEFF' + [header,...rows].map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
-  a.download = '電費紀錄.csv'; a.click();
+  const csv='\uFEFF'+[header,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download='電費紀錄.csv';a.click();
 }
 
-// ── Toast ──
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2500);
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
 }
 
-// Enter key on password
 document.getElementById('pw-input').focus();
 </script>
 </body>
