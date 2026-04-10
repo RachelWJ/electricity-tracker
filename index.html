@@ -522,6 +522,25 @@ function switchTab(t){
   if(t==='history')renderHistory();
 }
 
+// 清理 Google Sheets 可能回傳的時間戳記格式
+function cleanMonth(val){
+  if(!val)return'';
+  const s=String(val);
+  // 如果是 ISO 時間戳記，只取 yyyy-MM
+  if(s.includes('T'))return s.substring(0,7);
+  return s;
+}
+function cleanDate(val){
+  if(!val)return'';
+  const s=String(val);
+  if(s.includes('T')){
+    // 轉成 M/D 格式
+    const d=new Date(s);
+    return`${d.getMonth()+1}/${d.getDate()}`;
+  }
+  return s;
+}
+
 function renderHistory(){
   const me=document.getElementById('metrics');
   const hl=document.getElementById('history-list');
@@ -537,15 +556,18 @@ function renderHistory(){
   me.innerHTML=`
     <div class="metric"><div class="metric-label">紀錄月數</div><div class="metric-val">${records.length}<span style="font-size:14px;font-weight:400"> 月</span></div></div>
     <div class="metric"><div class="metric-label">月平均</div><div class="metric-val">$${avg.toLocaleString()}</div></div>
-    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${Number(maxR.total).toLocaleString()}</div><div class="metric-sub">${maxR.month}</div></div>
-    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${Number(minR.total).toLocaleString()}</div><div class="metric-sub">${minR.month}</div></div>`;
+    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${Number(maxR.total).toLocaleString()}</div><div class="metric-sub">${cleanMonth(maxR.month)}</div></div>
+    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${Number(minR.total).toLocaleString()}</div><div class="metric-sub">${cleanMonth(minR.month)}</div></div>`;
   hl.innerHTML=records.map(r=>{
+    const month=cleanMonth(r.month);
+    const dp=cleanDate(r.datePrev);
+    const dc=cleanDate(r.dateCurr);
     const units=[
       {name:'2-1',cost:r['2-1cost'],kwh:r['2-1kwh']},
       {name:'2-2',cost:r['2-2cost'],kwh:r['2-2kwh']},
       {name:'3-1',cost:r['3-1cost'],kwh:r['3-1kwh']},
       {name:'3-2',cost:r['3-2cost'],kwh:r['3-2kwh']},
-    ].filter(u=>u.cost!==''&&u.cost!==undefined&&u.cost!==null);
+    ].filter(u=>u.cost!==''&&u.cost!==undefined&&u.cost!==null&&u.cost!==0&&Number(u.cost)!==0);
     const m2f=r.billingMode2f||r.billingMode||'A';
     const m3f=r.billingMode3f||'A';
     const modeTags=[
@@ -555,8 +577,8 @@ function renderHistory(){
     return`<div class="history-card">
       <div class="history-header">
         <div>
-          <div class="history-month">${r.month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span> ${modeTags}</div>
-          <div class="history-meta">${r.datePrev&&r.dateCurr?`${r.datePrev} ～ ${r.dateCurr}　`:''}${units.length} 戶</div>
+          <div class="history-month">${month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span> ${modeTags}</div>
+          <div class="history-meta">${dp&&dc?`${dp} ～ ${dc}　`:''}${units.length} 戶</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="history-total">$${Number(r.total).toLocaleString()}</span>
@@ -567,7 +589,7 @@ function renderHistory(){
         ${units.map(u=>`
           <div class="history-unit-row">
             <span class="h-unit-name">${u.name}</span>
-            <span class="h-unit-kwh">${u.kwh} 度</span>
+            <span class="h-unit-kwh">${Number(u.kwh)} 度</span>
             <span class="h-unit-cost">$${Number(u.cost).toLocaleString()}</span>
           </div>`).join('')}
       </div>
