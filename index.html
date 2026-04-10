@@ -63,11 +63,12 @@
   input[type=number]{width:120px}
   input[type=month]{width:150px}
 
-  .meter-header{display:grid;grid-template-columns:62px 1fr 1fr;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  .meter-header{display:grid;grid-template-columns:62px 1fr 1fr 72px;gap:6px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
   .meter-header span{font-size:11px;color:var(--muted);text-align:center}
   .meter-header span:first-child{text-align:left}
-  .meter-row{display:grid;grid-template-columns:62px 1fr 1fr;gap:6px;align-items:center;margin-bottom:8px}
+  .meter-row{display:grid;grid-template-columns:62px 1fr 1fr 72px;gap:6px;align-items:center;margin-bottom:8px}
   .meter-row input{width:100%;text-align:center}
+  .meter-result{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--accent);text-align:right;white-space:nowrap;padding:4px 0}
   .unit-tag{font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);background:var(--accent-light);padding:4px 8px;border-radius:var(--radius-sm);text-align:center}
   .divider-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;padding:8px 0 4px;border-top:1px solid var(--border);margin-top:4px;margin-bottom:6px}
 
@@ -175,19 +176,23 @@
           <span>戶別</span>
           <span><input type="text" id="date-prev" placeholder="上期日期" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
           <span><input type="text" id="date-curr" placeholder="本期日期" style="width:100%;text-align:center;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg);color:var(--muted);font-family:var(--mono)"></span>
+          <span style="text-align:right">電費</span>
         </div>
 
         <div class="divider-label">2F 計費模式</div>
         <div class="mode-toggle">
-          <button class="mode-btn active" onclick="setMode('A')">模式 A｜各自獨立計算</button>
-          <button class="mode-btn" onclick="setMode('B')">模式 B｜共用階段額度</button>
+          <button class="mode-btn active" onclick="setMode('2f','A')">模式 A｜各自獨立</button>
+          <button class="mode-btn" onclick="setMode('2f','B')">模式 B｜共用額度</button>
         </div>
-        <div class="mode-note" id="mode-note">各戶獨立累進計算</div>
-
-        <div class="divider-label">2F</div>
+        <div class="mode-note" id="mode-note-2f">各戶獨立累進計算</div>
         <div id="meter-inputs-2f"></div>
 
-        <div class="divider-label">3F</div>
+        <div class="divider-label">3F 計費模式</div>
+        <div class="mode-toggle">
+          <button class="mode-btn active" onclick="setMode('3f','A')">模式 A｜各自獨立</button>
+          <button class="mode-btn" onclick="setMode('3f','B')">模式 B｜共用額度</button>
+        </div>
+        <div class="mode-note" id="mode-note-3f">各戶獨立累進計算</div>
         <div id="meter-inputs-3f"></div>
       </div>
 
@@ -220,14 +225,12 @@
 <script>
 const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzW75UtuU1R6TwPHCuHffJVsJDMIsVxKmT1QoTvtFnarDSKNKP9C8O-fFfUxZdaR1Nu/exec';
 const PASSWORD='sweet16';
-const UNITS_2F=['2-1','2-2'];
-const UNITS_3F=['3-1','3-2'];
 const TIERS={
   non:[{max:60,rate:1.63},{max:105,rate:2.10},{max:85,rate:2.89},{max:100,rate:3.94},{max:150,rate:4.74},{max:500,rate:6.03}],
   summer:[{max:60,rate:1.63},{max:105,rate:2.38},{max:85,rate:3.52},{max:100,rate:4.80},{max:150,rate:5.83},{max:500,rate:7.69}]
 };
 
-let season='non', billingMode='A', lastRows=[], records=[];
+let season='non', mode2f='A', mode3f='A', lastRows=[], records=[];
 
 function unlock(){
   const val=document.getElementById('pw-input').value;
@@ -269,7 +272,7 @@ function updateDateDefaults(){
   document.getElementById('date-curr').value=`${m}/${lastDayCurr}`;
 }
 
-// 自動帶入上期電表（從上個月紀錄的 curr 欄位）
+// 自動帶入上期電表（從上個月紀錄的 curr 值）
 function autoFillPrevMeters(){
   const val=document.getElementById('bill-month').value;
   if(!val||!records.length)return;
@@ -277,24 +280,34 @@ function autoFillPrevMeters(){
   const prevM=m===1?12:m-1;
   const prevY=m===1?y-1:y;
   const prevMonthStr=`${prevY}-${String(prevM).padStart(2,'0')}`;
-  const prev=records.find(r=>r.month===prevMonthStr);
+  // 比對月份（處理可能的時間戳格式）
+  const prev=records.find(r=>{
+    const rMonth=String(r.month||'');
+    return rMonth===prevMonthStr||rMonth.startsWith(prevMonthStr);
+  });
   if(!prev)return;
-  // 從紀錄帶入上期本期電表數字到「上期」欄
-  const map=[['2-1','u1curr'],['2-2','u2curr'],['3-1','u3curr'],['3-2','u4curr']];
-  map.forEach(([name,key],i)=>{
+  const keys=['u1curr','u2curr','u3curr','u4curr'];
+  keys.forEach((key,i)=>{
     const v=prev[key];
-    if(v!==undefined&&v!==''){
-      document.getElementById('prev'+i).value=v;
+    if(v!==undefined&&v!==''&&v!==null){
+      document.getElementById('prev'+i).value=Number(v);
     }
   });
   calc();
 }
 
-function setMode(m){
-  billingMode=m;
-  document.querySelectorAll('.mode-btn').forEach((b,i)=>b.classList.toggle('active',i===(m==='A'?0:1)));
-  document.getElementById('mode-note').textContent=
-    m==='A'?'各戶獨立累進計算':'2-1 與 2-2 共用每階段額度，用量少的那戶費用與模式 A 相同';
+function setMode(floor, m){
+  if(floor==='2f') mode2f=m;
+  else mode3f=m;
+  const noteId=floor==='2f'?'mode-note-2f':'mode-note-3f';
+  // 找對應的按鈕群組
+  const btns=document.querySelectorAll(`#meter-inputs-${floor}`).item(0)
+    ?.closest('.card')?.querySelectorAll(`.mode-toggle:nth-of-type(${floor==='2f'?1:2}) .mode-btn`);
+  // 改用 data attribute 方式更新按鈕狀態
+  document.querySelectorAll(`[data-floor="${floor}"]`).forEach((b,i)=>
+    b.classList.toggle('active',i===(m==='A'?0:1)));
+  document.getElementById(noteId).textContent=
+    m==='A'?'各戶獨立累進計算':'兩戶共用每階段額度，用量少的那戶費用與模式 A 相同';
   calc();
 }
 
@@ -322,9 +335,6 @@ function calcUnit(kwh){
   return{cost:+cost.toFixed(2),detail};
 }
 
-// 模式B：兩戶共用每階段上限
-// 用量少的戶費用 = 模式A（不變）
-// 用量多的戶可借用另一戶未用完的低階段額度
 function calcModeB(kwhA,kwhB){
   const t=TIERS[season];
   const isAHigh=kwhA>=kwhB;
@@ -344,27 +354,36 @@ function calcModeB(kwhA,kwhB){
     remHigh-=used;
     remLow=Math.max(0,remLow-tier.max);
   }
-  costHigh=+costHigh.toFixed(2);
-  const highResult={cost:costHigh,detail:detailHigh};
+  const highResult={cost:+costHigh.toFixed(2),detail:detailHigh};
   return{
-    resultFor2_1:isAHigh?highResult:lowResult,
-    resultFor2_2:isAHigh?lowResult:highResult
+    resultForA:isAHigh?highResult:lowResult,
+    resultForB:isAHigh?lowResult:highResult
   };
 }
 
 function renderMeterInputs(){
-  document.getElementById('meter-inputs-2f').innerHTML=UNITS_2F.map((u,i)=>`
+  document.getElementById('meter-inputs-2f').innerHTML=
+    ['2-1','2-2'].map((u,i)=>`
     <div class="meter-row">
       <div class="unit-tag">${u}</div>
       <input type="number" id="prev${i}" placeholder="上期" min="0" oninput="calc()">
       <input type="number" id="curr${i}" placeholder="本期" min="0" oninput="calc()">
+      <div class="meter-result" id="inline-result-${u}">—</div>
     </div>`).join('');
-  document.getElementById('meter-inputs-3f').innerHTML=UNITS_3F.map((u,i)=>`
+  document.getElementById('meter-inputs-3f').innerHTML=
+    ['3-1','3-2'].map((u,i)=>`
     <div class="meter-row">
       <div class="unit-tag">${u}</div>
       <input type="number" id="prev${i+2}" placeholder="上期" min="0" oninput="calc()">
       <input type="number" id="curr${i+2}" placeholder="本期" min="0" oninput="calc()">
+      <div class="meter-result" id="inline-result-${u}">—</div>
     </div>`).join('');
+
+  // 加入 data-floor 給模式按鈕
+  document.querySelectorAll('.mode-toggle').forEach((wrap,wi)=>{
+    const floor=wi===0?'2f':'3f';
+    wrap.querySelectorAll('.mode-btn').forEach(b=>b.setAttribute('data-floor',floor));
+  });
 }
 
 function readMeter(i){
@@ -374,28 +393,43 @@ function readMeter(i){
   return{valid:false};
 }
 
-function calc(){
-  lastRows=[];let anyData=false;
-  const v0=readMeter(0),v1=readMeter(1),v2=readMeter(2),v3=readMeter(3);
-
-  // 2F
-  if(v0.valid&&v1.valid&&billingMode==='B'){
-    anyData=true;
-    const{resultFor2_1,resultFor2_2}=calcModeB(v0.kwh,v1.kwh);
-    lastRows.push({name:'2-1',kwh:v0.kwh,cost:resultFor2_1.cost,total:resultFor2_1.cost,detail:resultFor2_1.detail,prev:v0.prev,curr:v0.curr,modeB:true});
-    lastRows.push({name:'2-2',kwh:v1.kwh,cost:resultFor2_2.cost,total:resultFor2_2.cost,detail:resultFor2_2.detail,prev:v1.prev,curr:v1.curr,modeB:true});
+function calcFloor(nameA,nameB,vA,vB,mode){
+  const rows=[];
+  if(vA.valid&&vB.valid&&mode==='B'){
+    const{resultForA,resultForB}=calcModeB(vA.kwh,vB.kwh);
+    rows.push({name:nameA,kwh:vA.kwh,cost:resultForA.cost,total:resultForA.cost,detail:resultForA.detail,prev:vA.prev,curr:vA.curr,modeB:true});
+    rows.push({name:nameB,kwh:vB.kwh,cost:resultForB.cost,total:resultForB.cost,detail:resultForB.detail,prev:vB.prev,curr:vB.curr,modeB:true});
   } else {
-    [['2-1',v0],['2-2',v1]].forEach(([name,v])=>{
-      if(v.valid){anyData=true;const{cost,detail}=calcUnit(v.kwh);lastRows.push({name,kwh:v.kwh,cost,total:cost,detail,prev:v.prev,curr:v.curr});}
+    [[nameA,vA],[nameB,vB]].forEach(([name,v])=>{
+      if(v.valid){const{cost,detail}=calcUnit(v.kwh);rows.push({name,kwh:v.kwh,cost,total:cost,detail,prev:v.prev,curr:v.curr});}
     });
   }
-  // 3F 永遠獨立計算
-  [['3-1',v2],['3-2',v3]].forEach(([name,v])=>{
-    if(v.valid){anyData=true;const{cost,detail}=calcUnit(v.kwh);lastRows.push({name,kwh:v.kwh,cost,total:cost,detail,prev:v.prev,curr:v.curr});}
+  return rows;
+}
+
+function calc(){
+  const v0=readMeter(0),v1=readMeter(1),v2=readMeter(2),v3=readMeter(3);
+  lastRows=[
+    ...calcFloor('2-1','2-2',v0,v1,mode2f),
+    ...calcFloor('3-1','3-2',v2,v3,mode3f)
+  ];
+
+  // 更新每列即時結果
+  ['2-1','2-2','3-1','3-2'].forEach(name=>{
+    const el=document.getElementById('inline-result-'+name);
+    if(!el)return;
+    const r=lastRows.find(x=>x.name===name);
+    if(r){
+      el.textContent='$'+Math.round(r.total).toLocaleString();
+      el.style.color=r.modeB?'var(--warning-text)':'var(--accent)';
+    } else {
+      el.textContent='—';
+      el.style.color='var(--muted)';
+    }
   });
 
   const rc=document.getElementById('result-card');
-  if(!anyData){rc.style.display='none';return;}
+  if(!lastRows.length){rc.style.display='none';return;}
   rc.style.display='block';
   const grand=lastRows.reduce((s,r)=>s+r.total,0);
   document.getElementById('grand-total').textContent='$'+Math.round(grand).toLocaleString();
@@ -433,7 +467,10 @@ async function apiPost(payload){
 
 function getUnitVal(name,field){
   const r=lastRows.find(x=>x.name===name);
-  return r?(field==='cost'?Math.round(r.total):field==='curr'?r.curr:r.kwh):'';
+  if(!r)return'';
+  if(field==='cost')return Math.round(r.total);
+  if(field==='curr')return r.curr;
+  return r.kwh;
 }
 
 async function saveRecord(){
@@ -444,7 +481,8 @@ async function saveRecord(){
   btn.disabled=true;btn.textContent='儲存中...';
   setSyncStatus('loading','儲存中...');
   const payload={
-    action:'save',month,season,public:0,billingMode,
+    action:'save',month,season,public:0,
+    billingMode2f:mode2f,billingMode3f:mode3f,
     datePrev:document.getElementById('date-prev').value||'',
     dateCurr:document.getElementById('date-curr').value||'',
     u1cost:getUnitVal('2-1','cost'),u1kwh:getUnitVal('2-1','kwh'),u1curr:getUnitVal('2-1','curr'),
@@ -508,11 +546,16 @@ function renderHistory(){
       {name:'3-1',cost:r['3-1cost'],kwh:r['3-1kwh']},
       {name:'3-2',cost:r['3-2cost'],kwh:r['3-2kwh']},
     ].filter(u=>u.cost!==''&&u.cost!==undefined&&u.cost!==null);
-    const modeTag=r.billingMode==='B'?' <span class="badge badge-modeB">2F模式B</span>':'';
+    const m2f=r.billingMode2f||r.billingMode||'A';
+    const m3f=r.billingMode3f||'A';
+    const modeTags=[
+      m2f==='B'?'<span class="badge badge-modeB">2F模式B</span>':'',
+      m3f==='B'?'<span class="badge badge-modeB">3F模式B</span>':''
+    ].filter(Boolean).join(' ');
     return`<div class="history-card">
       <div class="history-header">
         <div>
-          <div class="history-month">${r.month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span>${modeTag}</div>
+          <div class="history-month">${r.month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span> ${modeTags}</div>
           <div class="history-meta">${r.datePrev&&r.dateCurr?`${r.datePrev} ～ ${r.dateCurr}　`:''}${units.length} 戶</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
@@ -534,9 +577,10 @@ function renderHistory(){
 
 function exportCSV(){
   if(!records.length){showToast('尚無紀錄');return;}
-  const header=['月份','季節','計費模式','上期日期','本期日期','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
+  const header=['月份','季節','2F模式','3F模式','上期日期','本期日期','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
   const rows=records.map(r=>[
-    r.month,r.season==='summer'?'夏季':'非夏季',r.billingMode||'A',
+    r.month,r.season==='summer'?'夏季':'非夏季',
+    r.billingMode2f||r.billingMode||'A',r.billingMode3f||'A',
     r.datePrev||'',r.dateCurr||'',
     r['2-1cost']||'',r['2-1kwh']||'',
     r['2-2cost']||'',r['2-2kwh']||'',
