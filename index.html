@@ -223,7 +223,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbx7fQBN31WTp5x6SQB57Hwho8s4wQENk4WBV88VoraGqMOciJLhUPpFoEiqcc9aHhsU/exec';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbz19j016-2pBuHrw_MtmbydADtlsvfU8hBUbjcXUnZ1jbXUhZZ5Vwq6MANMfno6CRh2/exec';
 const PASSWORD='1234';
 const TIERS={
   non:[{max:60,rate:1.63},{max:105,rate:2.10},{max:85,rate:2.89},{max:100,rate:3.94},{max:150,rate:4.74},{max:500,rate:6.03}],
@@ -265,28 +265,35 @@ function autoFillMonth(){
   const val=document.getElementById('bill-month').value;
   if(!val||!records.length)return;
 
-  // 找當月是否已有紀錄
-  const current=records.find(r=>String(r.month||'').substring(0,7)===val);
+  // 計算當月的 dateCurr（本月最後一天）和 datePrev（上月最後一天）
+  const [y,m]=val.split('-').map(Number);
+  const prevMonth=m===1?12:m-1;
+  const prevYear=m===1?y-1:y;
+  const lastDayPrev=new Date(prevYear,prevMonth,0).getDate();
+  const lastDayCurr=new Date(y,m,0).getDate();
+  const expectedCurr=`${m}/${lastDayCurr}`;
+  const expectedPrev=`${prevMonth}/${lastDayPrev}`;
+
+  // 找當月紀錄：比對 dateCurr
+  const current=records.find(r=>{
+    const dc=cleanDate(r.dateCurr)||String(r.dateCurr||'');
+    return dc===expectedCurr;
+  });
+
   if(current){
     // 填入已存的資料
-    if(current.datePrev) document.getElementById('date-prev').value=cleanDate(current.datePrev)||current.datePrev;
-    if(current.dateCurr) document.getElementById('date-curr').value=cleanDate(current.dateCurr)||current.dateCurr;
-
-    // 填入模式
-    const m2f=String(current.billingMode2f||'A');
-    const m3f=String(current.billingMode3f||'A');
-    setMode('2f', m2f);
-    setMode('3f', m3f);
-
-    // 填入電表數字（上期 = prev，本期 = prev+kwh = curr）
+    document.getElementById('date-prev').value=cleanDate(current.datePrev)||current.datePrev||expectedPrev;
+    document.getElementById('date-curr').value=cleanDate(current.dateCurr)||current.dateCurr||expectedCurr;
+    setMode('2f', String(current.billingMode2f||'A'));
+    setMode('3f', String(current.billingMode3f||'A'));
     const map=[
-      {prev:'u1curr',kwh:'2-1kwh',idx:0},
-      {prev:'u2curr',kwh:'2-2kwh',idx:1},
-      {prev:'u3curr',kwh:'3-1kwh',idx:2},
-      {prev:'u4curr',kwh:'3-2kwh',idx:3},
+      {curr:'u1curr',kwh:'2-1kwh',idx:0},
+      {curr:'u2curr',kwh:'2-2kwh',idx:1},
+      {curr:'u3curr',kwh:'3-1kwh',idx:2},
+      {curr:'u4curr',kwh:'3-2kwh',idx:3},
     ];
-    map.forEach(({prev,kwh,idx})=>{
-      const currVal=Number(current[prev]);
+    map.forEach(({curr,kwh,idx})=>{
+      const currVal=Number(current[curr]);
       const kwhVal=Number(current[kwh]);
       if(currVal){
         document.getElementById('curr'+idx).value=currVal;
@@ -298,12 +305,11 @@ function autoFillMonth(){
     return;
   }
 
-  // 沒有當月紀錄：自動帶入上期電表（從上個月的 curr）
-  const [y,m]=val.split('-').map(Number);
-  const prevM=m===1?12:m-1;
-  const prevY=m===1?y-1:y;
-  const prevMonthStr=`${prevY}-${String(prevM).padStart(2,'0')}`;
-  const prev=records.find(r=>String(r.month||'').substring(0,7)===prevMonthStr);
+  // 沒有當月紀錄：找 dateCurr = 上月最後一天 的紀錄，帶入上期電表
+  const prev=records.find(r=>{
+    const dc=cleanDate(r.dateCurr)||String(r.dateCurr||'');
+    return dc===expectedPrev;
+  });
   if(!prev)return;
   ['u1curr','u2curr','u3curr','u4curr'].forEach((key,i)=>{
     const v=prev[key];
@@ -312,7 +318,7 @@ function autoFillMonth(){
       document.getElementById('curr'+i).value='';
     }
   });
-  showToast(`已帶入上期電表數字`);
+  showToast('已帶入上期電表數字');
   calc();
 }
 
@@ -529,12 +535,12 @@ async function saveRecord(){
   btn.disabled=false;btn.textContent='儲存本月紀錄';
 }
 
-async function deleteRecord(month){
-  if(!confirm(`確定刪除 ${month} 的紀錄？`))return;
+async function deleteRecord(month,dateCurr){
+  if(!confirm(`確定刪除這筆紀錄？`))return;
   setSyncStatus('loading','刪除中...');
   try{
-    await apiPost({action:'delete',month});
-    showToast(`${month} 已刪除`);
+    await apiPost({action:'delete',month,dateCurr});
+    showToast(`紀錄已刪除`);
     await loadFromSheets();
     renderHistory();
   }catch{setSyncStatus('err','刪除失敗');}
@@ -564,6 +570,23 @@ function cleanDate(val){
   return s;
 }
 
+// 從 dateCurr（例如 3/31）和當前年份推算月份標題（例如 2026-03）
+function deriveMonthlabel(dateCurr, monthField){
+  const dc=cleanDate(dateCurr)||String(dateCurr||'');
+  if(dc){
+    const parts=dc.split('/');
+    if(parts.length===2){
+      const m=parseInt(parts[0]);
+      // 從 month 欄位取年份，若 month 是時間戳記也能處理
+      const raw=String(monthField||'');
+      let y=new Date().getFullYear();
+      if(raw.length>=4) y=parseInt(raw.substring(0,4));
+      return`${y}-${String(m).padStart(2,'0')}`;
+    }
+  }
+  return cleanMonth(monthField);
+}
+
 function renderHistory(){
   const me=document.getElementById('metrics');
   const hl=document.getElementById('history-list');
@@ -579,11 +602,11 @@ function renderHistory(){
   me.innerHTML=`
     <div class="metric"><div class="metric-label">紀錄月數</div><div class="metric-val">${records.length}<span style="font-size:14px;font-weight:400"> 月</span></div></div>
     <div class="metric"><div class="metric-label">月平均</div><div class="metric-val">$${avg.toLocaleString()}</div></div>
-    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${(Number(maxR.total)||0).toLocaleString()}</div><div class="metric-sub">${cleanMonth(maxR.month)}</div></div>
-    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${(Number(minR.total)||0).toLocaleString()}</div><div class="metric-sub">${cleanMonth(minR.month)}</div></div>`;
+    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${(Number(maxR.total)||0).toLocaleString()}</div><div class="metric-sub">${deriveMonthlabel(maxR.dateCurr,maxR.month)}</div></div>
+    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${(Number(minR.total)||0).toLocaleString()}</div><div class="metric-sub">${deriveMonthlabel(minR.dateCurr,minR.month)}</div></div>`;
 
   hl.innerHTML=records.map(r=>{
-    const month=cleanMonth(r.month);
+    const month=deriveMonthlabel(r.dateCurr, r.month);
     const dp=cleanDate(r.datePrev);
     const dc=cleanDate(r.dateCurr);
     const units=[
@@ -606,7 +629,7 @@ function renderHistory(){
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="history-total">$${(Number(r.total)||0).toLocaleString()}</span>
-          <button class="del-btn" onclick="deleteRecord('${r.month}')">刪除</button>
+          <button class="del-btn" onclick="deleteRecord('${r.month}','${cleanDate(r.dateCurr)||r.dateCurr||''}')">刪除</button>
         </div>
       </div>
       <div class="history-body">
