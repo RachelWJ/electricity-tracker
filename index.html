@@ -545,8 +545,8 @@ function renderHistory(){
   me.innerHTML=`
     <div class="metric"><div class="metric-label">紀錄月數</div><div class="metric-val">${records.length}<span style="font-size:14px;font-weight:400"> 月</span></div></div>
     <div class="metric"><div class="metric-label">月平均</div><div class="metric-val">$${avg.toLocaleString()}</div></div>
-    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${Number(maxR.total).toLocaleString()}</div><div class="metric-sub">${cleanMonth(maxR.month)}</div></div>
-    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${Number(minR.total).toLocaleString()}</div><div class="metric-sub">${cleanMonth(minR.month)}</div></div>`;
+    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${Number(maxR.total).toLocaleString()}</div><div class="metric-sub">${cleanDate(maxR.datePrev)&&cleanDate(maxR.dateCurr)?`${cleanDate(maxR.datePrev)}～${cleanDate(maxR.dateCurr)}`:cleanMonth(maxR.month)}</div></div>
+    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${Number(minR.total).toLocaleString()}</div><div class="metric-sub">${cleanDate(minR.datePrev)&&cleanDate(minR.dateCurr)?`${cleanDate(minR.datePrev)}～${cleanDate(minR.dateCurr)}`:cleanMonth(minR.month)}</div></div>`;
   hl.innerHTML=records.map(r=>{
     const month=cleanMonth(r.month);
     const dp=cleanDate(r.datePrev);
@@ -567,7 +567,7 @@ function renderHistory(){
       <div class="history-header">
         <div>
           <div class="history-month">${month} <span class="badge ${r.season==='summer'?'badge-summer':'badge-non'}">${r.season==='summer'?'夏季':'非夏季'}</span> ${modeTags}</div>
-          <div class="history-meta">${dp&&dc?`${dp} ～ ${dc}　`:''}${units.length} 戶</div>
+          <div class="history-meta">${dp&&dc?`${dp} ～ ${dc}`:''}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="history-total">$${Number(r.total).toLocaleString()}</span>
