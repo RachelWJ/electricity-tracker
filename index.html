@@ -471,9 +471,9 @@ async function saveRecord(){
   setSyncStatus('loading','儲存中...');
   const payload={
     action:'save',month,season,public:0,
-    billingMode2f:mode2f,billingMode3f:mode3f,
     datePrev:document.getElementById('date-prev').value||'',
     dateCurr:document.getElementById('date-curr').value||'',
+    billingMode2f:mode2f,billingMode3f:mode3f,
     u1cost:getUnitVal('2-1','cost'),u1kwh:getUnitVal('2-1','kwh'),u1curr:getUnitVal('2-1','curr'),
     u2cost:getUnitVal('2-2','cost'),u2kwh:getUnitVal('2-2','kwh'),u2curr:getUnitVal('2-2','curr'),
     u3cost:getUnitVal('3-1','cost'),u3kwh:getUnitVal('3-1','kwh'),u3curr:getUnitVal('3-1','curr'),
