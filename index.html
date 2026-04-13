@@ -252,7 +252,7 @@ function init(){
   document.getElementById('bill-month').value=`${y}-${String(m).padStart(2,'0')}`;
   document.getElementById('bill-month').addEventListener('change',()=>{
     updateDateDefaults();
-    autoFillPrevMeters();
+    autoFillMonth();
   });
   updateDateDefaults();
   updateRateHint();
@@ -260,21 +260,45 @@ function init(){
   loadFromSheets();
 }
 
-function updateDateDefaults(){
-  const val=document.getElementById('bill-month').value;
-  if(!val)return;
-  const [y,m]=val.split('-').map(Number);
-  const prevMonth=m===1?12:m-1;
-  const prevYear=m===1?y-1:y;
-  const lastDayPrev=new Date(prevYear,prevMonth,0).getDate();
-  document.getElementById('date-prev').value=`${prevMonth}/${lastDayPrev}`;
-  const lastDayCurr=new Date(y,m,0).getDate();
-  document.getElementById('date-curr').value=`${m}/${lastDayCurr}`;
-}
-
-function autoFillPrevMeters(){
+// 選月份時：有紀錄則填入舊資料，沒有則帶入上期電表
+function autoFillMonth(){
   const val=document.getElementById('bill-month').value;
   if(!val||!records.length)return;
+
+  // 找當月是否已有紀錄
+  const current=records.find(r=>String(r.month||'').substring(0,7)===val);
+  if(current){
+    // 填入已存的資料
+    if(current.datePrev) document.getElementById('date-prev').value=cleanDate(current.datePrev)||current.datePrev;
+    if(current.dateCurr) document.getElementById('date-curr').value=cleanDate(current.dateCurr)||current.dateCurr;
+
+    // 填入模式
+    const m2f=String(current.billingMode2f||'A');
+    const m3f=String(current.billingMode3f||'A');
+    setMode('2f', m2f);
+    setMode('3f', m3f);
+
+    // 填入電表數字（上期 = prev，本期 = prev+kwh = curr）
+    const map=[
+      {prev:'u1curr',kwh:'2-1kwh',idx:0},
+      {prev:'u2curr',kwh:'2-2kwh',idx:1},
+      {prev:'u3curr',kwh:'3-1kwh',idx:2},
+      {prev:'u4curr',kwh:'3-2kwh',idx:3},
+    ];
+    map.forEach(({prev,kwh,idx})=>{
+      const currVal=Number(current[prev]);
+      const kwhVal=Number(current[kwh]);
+      if(currVal){
+        document.getElementById('curr'+idx).value=currVal;
+        if(kwhVal) document.getElementById('prev'+idx).value=currVal-kwhVal;
+      }
+    });
+    showToast(`已載入 ${val} 的紀錄`);
+    calc();
+    return;
+  }
+
+  // 沒有當月紀錄：自動帶入上期電表（從上個月的 curr）
   const [y,m]=val.split('-').map(Number);
   const prevM=m===1?12:m-1;
   const prevY=m===1?y-1:y;
@@ -285,9 +309,21 @@ function autoFillPrevMeters(){
     const v=prev[key];
     if(v!==undefined&&v!==''&&v!==null){
       document.getElementById('prev'+i).value=Number(v);
+      document.getElementById('curr'+i).value='';
     }
   });
+  showToast(`已帶入上期電表數字`);
   calc();
+}
+  const val=document.getElementById('bill-month').value;
+  if(!val)return;
+  const [y,m]=val.split('-').map(Number);
+  const prevMonth=m===1?12:m-1;
+  const prevYear=m===1?y-1:y;
+  const lastDayPrev=new Date(prevYear,prevMonth,0).getDate();
+  document.getElementById('date-prev').value=`${prevMonth}/${lastDayPrev}`;
+  const lastDayCurr=new Date(y,m,0).getDate();
+  document.getElementById('date-curr').value=`${m}/${lastDayCurr}`;
 }
 
 function setMode(floor,m){
@@ -437,7 +473,11 @@ async function loadFromSheets(){
   try{
     const res=await fetch(SCRIPT_URL);
     const json=await res.json();
-    if(json.status==='ok'){records=json.data||[];setSyncStatus('ok','已同步');}
+    if(json.status==='ok'){
+      records=json.data||[];
+      setSyncStatus('ok','已同步');
+      autoFillMonth();
+    }
     else throw new Error();
   }catch{setSyncStatus('err','同步失敗');}
 }
