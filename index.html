@@ -181,16 +181,16 @@
 
         <div class="divider-label">2F 計費模式</div>
         <div class="mode-toggle">
-          <button class="mode-btn active" onclick="setMode('2f','A')">模式 A｜各自獨立</button>
-          <button class="mode-btn" onclick="setMode('2f','B')">模式 B｜共用額度</button>
+          <button class="mode-btn active" data-floor="2f" onclick="setMode('2f','A')">模式 A｜各自獨立</button>
+          <button class="mode-btn" data-floor="2f" onclick="setMode('2f','B')">模式 B｜共用額度</button>
         </div>
         <div class="mode-note" id="mode-note-2f">各戶獨立累進計算</div>
         <div id="meter-inputs-2f"></div>
 
         <div class="divider-label">3F 計費模式</div>
         <div class="mode-toggle">
-          <button class="mode-btn active" onclick="setMode('3f','A')">模式 A｜各自獨立</button>
-          <button class="mode-btn" onclick="setMode('3f','B')">模式 B｜共用額度</button>
+          <button class="mode-btn active" data-floor="3f" onclick="setMode('3f','A')">模式 A｜各自獨立</button>
+          <button class="mode-btn" data-floor="3f" onclick="setMode('3f','B')">模式 B｜共用額度</button>
         </div>
         <div class="mode-note" id="mode-note-3f">各戶獨立累進計算</div>
         <div id="meter-inputs-3f"></div>
@@ -296,17 +296,12 @@ function autoFillPrevMeters(){
   calc();
 }
 
-function setMode(floor, m){
+function setMode(floor,m){
   if(floor==='2f') mode2f=m;
   else mode3f=m;
-  const noteId=floor==='2f'?'mode-note-2f':'mode-note-3f';
-  // 找對應的按鈕群組
-  const btns=document.querySelectorAll(`#meter-inputs-${floor}`).item(0)
-    ?.closest('.card')?.querySelectorAll(`.mode-toggle:nth-of-type(${floor==='2f'?1:2}) .mode-btn`);
-  // 改用 data attribute 方式更新按鈕狀態
   document.querySelectorAll(`[data-floor="${floor}"]`).forEach((b,i)=>
     b.classList.toggle('active',i===(m==='A'?0:1)));
-  document.getElementById(noteId).textContent=
+  document.getElementById('mode-note-'+floor).textContent=
     m==='A'?'各戶獨立累進計算':'兩戶共用每階段額度，用量少的那戶費用與模式 A 相同';
   calc();
 }
@@ -378,12 +373,6 @@ function renderMeterInputs(){
       <input type="number" id="curr${i+2}" placeholder="本期" min="0" oninput="calc()">
       <div class="meter-result" id="inline-result-${u}">—</div>
     </div>`).join('');
-
-  // 加入 data-floor 給模式按鈕
-  document.querySelectorAll('.mode-toggle').forEach((wrap,wi)=>{
-    const floor=wi===0?'2f':'3f';
-    wrap.querySelectorAll('.mode-btn').forEach(b=>b.setAttribute('data-floor',floor));
-  });
 }
 
 function readMeter(i){
