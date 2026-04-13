@@ -480,6 +480,7 @@ async function saveRecord(){
     u4cost:getUnitVal('3-2','cost'),u4kwh:getUnitVal('3-2','kwh'),u4curr:getUnitVal('3-2','curr'),
     total:Math.round(lastRows.reduce((s,r)=>s+r.total,0))
   };
+  console.log('payload:', JSON.stringify(payload));
   try{
     await apiPost(payload);
     setSyncStatus('ok','已儲存');
