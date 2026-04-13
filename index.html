@@ -68,8 +68,8 @@
   .meter-header span:first-child{text-align:left}
   .meter-row{display:grid;grid-template-columns:62px 1fr 1fr 72px;gap:6px;align-items:center;margin-bottom:8px}
   .meter-row input{width:100%;text-align:center}
-  .meter-result{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--accent);text-align:right;white-space:nowrap;padding:4px 0}
   .unit-tag{font-size:13px;font-weight:700;color:var(--accent);font-family:var(--mono);background:var(--accent-light);padding:4px 8px;border-radius:var(--radius-sm);text-align:center}
+  .meter-result{font-size:13px;font-weight:700;font-family:var(--mono);color:var(--accent);text-align:right;white-space:nowrap;padding:4px 0}
   .divider-label{font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;padding:8px 0 4px;border-top:1px solid var(--border);margin-top:4px;margin-bottom:6px}
 
   .result-block{background:var(--bg);border-radius:var(--radius-sm);padding:.85rem 1rem;margin-bottom:8px}
@@ -104,7 +104,7 @@
   .history-body{padding:.75rem 1rem}
   .history-unit-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border);font-size:13px}
   .history-unit-row:last-child{border-bottom:none}
-  .h-unit-name{font-family:var(--mono);font-weight:700;color:var(--accent);font-size:12px}
+  .h-unit-name{font-family:var(--mono);font-weight:700;color:var(--accent);font-size:12px;min-width:40px}
   .h-unit-cost{font-family:var(--mono);font-weight:500}
   .h-unit-kwh{font-size:11px;color:var(--muted);font-family:var(--mono)}
   .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.04em}
@@ -223,8 +223,8 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzW75UtuU1R6TwPHCuHffJVsJDMIsVxKmT1QoTvtFnarDSKNKP9C8O-fFfUxZdaR1Nu/exec';
-const PASSWORD='sweet16';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbzqqTSvTIXZMw5Mjp6uGxqVtYmTv0ndSdA-Sp3-npzsmmzPID_Xl13yuapNC72Xe6Y1/exec';
+const PASSWORD='1234';
 const TIERS={
   non:[{max:60,rate:1.63},{max:105,rate:2.10},{max:85,rate:2.89},{max:100,rate:3.94},{max:150,rate:4.74},{max:500,rate:6.03}],
   summer:[{max:60,rate:1.63},{max:105,rate:2.38},{max:85,rate:3.52},{max:100,rate:4.80},{max:150,rate:5.83},{max:500,rate:7.69}]
@@ -272,7 +272,6 @@ function updateDateDefaults(){
   document.getElementById('date-curr').value=`${m}/${lastDayCurr}`;
 }
 
-// 自動帶入上期電表（從上個月紀錄的 curr 值）
 function autoFillPrevMeters(){
   const val=document.getElementById('bill-month').value;
   if(!val||!records.length)return;
@@ -280,14 +279,9 @@ function autoFillPrevMeters(){
   const prevM=m===1?12:m-1;
   const prevY=m===1?y-1:y;
   const prevMonthStr=`${prevY}-${String(prevM).padStart(2,'0')}`;
-  // 比對月份（處理可能的時間戳格式）
-  const prev=records.find(r=>{
-    const rMonth=String(r.month||'');
-    return rMonth===prevMonthStr||rMonth.startsWith(prevMonthStr);
-  });
+  const prev=records.find(r=>String(r.month||'').substring(0,7)===prevMonthStr);
   if(!prev)return;
-  const keys=['u1curr','u2curr','u3curr','u4curr'];
-  keys.forEach((key,i)=>{
+  ['u1curr','u2curr','u3curr','u4curr'].forEach((key,i)=>{
     const v=prev[key];
     if(v!==undefined&&v!==''&&v!==null){
       document.getElementById('prev'+i).value=Number(v);
@@ -403,7 +397,6 @@ function calc(){
     ...calcFloor('3-1','3-2',v2,v3,mode3f)
   ];
 
-  // 更新每列即時結果
   ['2-1','2-2','3-1','3-2'].forEach(name=>{
     const el=document.getElementById('inline-result-'+name);
     if(!el)return;
@@ -470,17 +463,17 @@ async function saveRecord(){
   btn.disabled=true;btn.textContent='儲存中...';
   setSyncStatus('loading','儲存中...');
   const payload={
-    action:'save',month,season,public:0,
+    action:'save',month,season,
     datePrev:document.getElementById('date-prev').value||'',
     dateCurr:document.getElementById('date-curr').value||'',
-    billingMode2f:mode2f,billingMode3f:mode3f,
+    billingMode2f:mode2f,
+    billingMode3f:mode3f,
     u1cost:getUnitVal('2-1','cost'),u1kwh:getUnitVal('2-1','kwh'),u1curr:getUnitVal('2-1','curr'),
     u2cost:getUnitVal('2-2','cost'),u2kwh:getUnitVal('2-2','kwh'),u2curr:getUnitVal('2-2','curr'),
     u3cost:getUnitVal('3-1','cost'),u3kwh:getUnitVal('3-1','kwh'),u3curr:getUnitVal('3-1','curr'),
     u4cost:getUnitVal('3-2','cost'),u4kwh:getUnitVal('3-2','kwh'),u4curr:getUnitVal('3-2','curr'),
     total:Math.round(lastRows.reduce((s,r)=>s+r.total,0))
   };
-  console.log('payload:', JSON.stringify(payload));
   try{
     await apiPost(payload);
     setSyncStatus('ok','已儲存');
@@ -512,19 +505,17 @@ function switchTab(t){
   if(t==='history')renderHistory();
 }
 
-// 清理 Google Sheets 可能回傳的時間戳記格式
 function cleanMonth(val){
   if(!val)return'';
   const s=String(val);
-  // 如果是 ISO 時間戳記，只取 yyyy-MM
   if(s.includes('T'))return s.substring(0,7);
   return s;
 }
+
 function cleanDate(val){
   if(!val)return'';
   const s=String(val);
   if(s.includes('T')){
-    // 轉成 M/D 格式
     const d=new Date(s);
     return`${d.getMonth()+1}/${d.getDate()}`;
   }
@@ -539,15 +530,16 @@ function renderHistory(){
     hl.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div>尚無紀錄，<br>請先計算並儲存電費</div>';
     return;
   }
-  const totals=records.map(r=>Number(r.total));
+  const totals=records.map(r=>Number(r.total)||0);
   const avg=Math.round(totals.reduce((a,b)=>a+b,0)/totals.length);
-  const maxR=records.reduce((a,b)=>Number(a.total)>Number(b.total)?a:b);
-  const minR=records.reduce((a,b)=>Number(a.total)<Number(b.total)?a:b);
+  const maxR=records.reduce((a,b)=>(Number(a.total)||0)>(Number(b.total)||0)?a:b);
+  const minR=records.reduce((a,b)=>(Number(a.total)||0)<(Number(b.total)||0)?a:b);
   me.innerHTML=`
     <div class="metric"><div class="metric-label">紀錄月數</div><div class="metric-val">${records.length}<span style="font-size:14px;font-weight:400"> 月</span></div></div>
     <div class="metric"><div class="metric-label">月平均</div><div class="metric-val">$${avg.toLocaleString()}</div></div>
-    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${Number(maxR.total).toLocaleString()}</div><div class="metric-sub">${cleanDate(maxR.datePrev)&&cleanDate(maxR.dateCurr)?`${cleanDate(maxR.datePrev)}～${cleanDate(maxR.dateCurr)}`:cleanMonth(maxR.month)}</div></div>
-    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${Number(minR.total).toLocaleString()}</div><div class="metric-sub">${cleanDate(minR.datePrev)&&cleanDate(minR.dateCurr)?`${cleanDate(minR.datePrev)}～${cleanDate(minR.dateCurr)}`:cleanMonth(minR.month)}</div></div>`;
+    <div class="metric"><div class="metric-label">最高月份</div><div class="metric-val" style="font-size:17px">$${(Number(maxR.total)||0).toLocaleString()}</div><div class="metric-sub">${cleanMonth(maxR.month)}</div></div>
+    <div class="metric"><div class="metric-label">最低月份</div><div class="metric-val" style="font-size:17px">$${(Number(minR.total)||0).toLocaleString()}</div><div class="metric-sub">${cleanMonth(minR.month)}</div></div>`;
+
   hl.innerHTML=records.map(r=>{
     const month=cleanMonth(r.month);
     const dp=cleanDate(r.datePrev);
@@ -557,9 +549,9 @@ function renderHistory(){
       {name:'2-2',cost:r['2-2cost'],kwh:r['2-2kwh']},
       {name:'3-1',cost:r['3-1cost'],kwh:r['3-1kwh']},
       {name:'3-2',cost:r['3-2cost'],kwh:r['3-2kwh']},
-    ].filter(u=>u.cost!==''&&u.cost!==undefined&&u.cost!==null&&u.cost!==0&&Number(u.cost)!==0);
-    const m2f=r.billingMode2f||r.billingMode||'A';
-    const m3f=r.billingMode3f||'A';
+    ].filter(u=>u.cost!==''&&u.cost!==undefined&&u.cost!==null&&Number(u.cost)>0);
+    const m2f=String(r.billingMode2f||'A');
+    const m3f=String(r.billingMode3f||'A');
     const modeTags=[
       m2f==='B'?'<span class="badge badge-modeB">2F模式B</span>':'',
       m3f==='B'?'<span class="badge badge-modeB">3F模式B</span>':''
@@ -571,7 +563,7 @@ function renderHistory(){
           <div class="history-meta">${dp&&dc?`${dp} ～ ${dc}`:''}</div>
         </div>
         <div style="display:flex;align-items:center;gap:10px">
-          <span class="history-total">$${Number(r.total).toLocaleString()}</span>
+          <span class="history-total">$${(Number(r.total)||0).toLocaleString()}</span>
           <button class="del-btn" onclick="deleteRecord('${r.month}')">刪除</button>
         </div>
       </div>
@@ -591,14 +583,14 @@ function exportCSV(){
   if(!records.length){showToast('尚無紀錄');return;}
   const header=['月份','季節','2F模式','3F模式','上期日期','本期日期','2-1(元)','2-1(度)','2-2(元)','2-2(度)','3-1(元)','3-1(度)','3-2(元)','3-2(度)','合計'];
   const rows=records.map(r=>[
-    r.month,r.season==='summer'?'夏季':'非夏季',
-    r.billingMode2f||r.billingMode||'A',r.billingMode3f||'A',
-    r.datePrev||'',r.dateCurr||'',
+    cleanMonth(r.month),r.season==='summer'?'夏季':'非夏季',
+    r.billingMode2f||'A',r.billingMode3f||'A',
+    cleanDate(r.datePrev),cleanDate(r.dateCurr),
     r['2-1cost']||'',r['2-1kwh']||'',
     r['2-2cost']||'',r['2-2kwh']||'',
     r['3-1cost']||'',r['3-1kwh']||'',
     r['3-2cost']||'',r['3-2kwh']||'',
-    r.total
+    r.total||''
   ]);
   const csv='\uFEFF'+[header,...rows].map(r=>r.join(',')).join('\n');
   const a=document.createElement('a');
