@@ -315,6 +315,8 @@ function autoFillMonth(){
   showToast(`已帶入上期電表數字`);
   calc();
 }
+
+function updateDateDefaults(){
   const val=document.getElementById('bill-month').value;
   if(!val)return;
   const [y,m]=val.split('-').map(Number);
