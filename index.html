@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-<meta charset="UTF-8">
+<!-- saved from url=(0043)file:///Users/rachel/Downloads/index_2.html -->
+<html lang="zh-TW"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>電費管理</title>
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="./index_files/css2" rel="stylesheet">
 <style>
   :root {
     --bg:#f5f4f0;--surface:#fff;--border:#e0ddd6;--text:#1a1a18;--muted:#7a7870;
@@ -127,7 +127,7 @@
     <div class="lock-icon">🔒</div>
     <div class="lock-title">電費管理系統</div>
     <div class="lock-sub">請輸入密碼以繼續</div>
-    <input class="lock-input" type="password" id="pw-input" placeholder="••••••••" maxlength="30" onkeydown="if(event.key==='Enter')unlock()">
+    <input class="lock-input" type="password" id="pw-input" placeholder="••••••••" maxlength="30" onkeydown="if(event.key===&#39;Enter&#39;)unlock()">
     <button class="lock-btn" onclick="unlock()">進入</button>
     <div class="lock-error" id="lock-error"></div>
   </div>
@@ -146,8 +146,8 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" onclick="switchTab('calc')">計算電費</button>
-    <button class="tab" onclick="switchTab('history')">歷史紀錄</button>
+    <button class="tab active" onclick="switchTab(&#39;calc&#39;)">計算電費</button>
+    <button class="tab" onclick="switchTab(&#39;history&#39;)">歷史紀錄</button>
   </div>
 
   <div class="content">
@@ -164,8 +164,8 @@
       <div class="card">
         <div class="card-label">季節費率</div>
         <div class="season-wrap">
-          <button class="season-btn active" onclick="setSeason('non')">非夏季（10～5月）</button>
-          <button class="season-btn" onclick="setSeason('summer')">夏季（6～9月）</button>
+          <button class="season-btn active" onclick="setSeason(&#39;non&#39;)">非夏季（10～5月）</button>
+          <button class="season-btn" onclick="setSeason(&#39;summer&#39;)">夏季（6～9月）</button>
         </div>
         <div style="font-size:11px;color:var(--muted);font-family:var(--mono)" id="rate-hint"></div>
       </div>
@@ -181,16 +181,16 @@
 
         <div class="divider-label">2F 計費模式</div>
         <div class="mode-toggle">
-          <button class="mode-btn active" data-floor="2f" onclick="setMode('2f','A')">模式 A｜各自獨立</button>
-          <button class="mode-btn" data-floor="2f" onclick="setMode('2f','B')">模式 B｜共用額度</button>
+          <button class="mode-btn active" data-floor="2f" onclick="setMode(&#39;2f&#39;,&#39;A&#39;)">模式 A｜各自獨立</button>
+          <button class="mode-btn" data-floor="2f" onclick="setMode(&#39;2f&#39;,&#39;B&#39;)">模式 B｜共用額度</button>
         </div>
         <div class="mode-note" id="mode-note-2f">各戶獨立累進計算</div>
         <div id="meter-inputs-2f"></div>
 
         <div class="divider-label">3F 計費模式</div>
         <div class="mode-toggle">
-          <button class="mode-btn active" data-floor="3f" onclick="setMode('3f','A')">模式 A｜各自獨立</button>
-          <button class="mode-btn" data-floor="3f" onclick="setMode('3f','B')">模式 B｜共用額度</button>
+          <button class="mode-btn active" data-floor="3f" onclick="setMode(&#39;3f&#39;,&#39;A&#39;)">模式 A｜各自獨立</button>
+          <button class="mode-btn" data-floor="3f" onclick="setMode(&#39;3f&#39;,&#39;B&#39;)">模式 B｜共用額度</button>
         </div>
         <div class="mode-note" id="mode-note-3f">各戶獨立累進計算</div>
         <div id="meter-inputs-3f"></div>
@@ -223,7 +223,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const SCRIPT_URL='https://script.google.com/macros/s/AKfycbz19j016-2pBuHrw_MtmbydADtlsvfU8hBUbjcXUnZ1jbXUhZZ5Vwq6MANMfno6CRh2/exec';
+const SCRIPT_URL='https://script.google.com/macros/s/AKfycbxZG1_5ld_R0IDhz1qpdS3ISo5TK5PiubDBE5NCyo_PmKnYhUvpSXvfRa2TucFWbSLG/exec';
 const PASSWORD='1234';
 const TIERS={
   non:[{max:60,rate:1.63},{max:105,rate:2.10},{max:85,rate:2.89},{max:100,rate:3.94},{max:150,rate:4.74},{max:500,rate:6.03}],
@@ -260,30 +260,37 @@ function init(){
   loadFromSheets();
 }
 
+// 從 dateCurr 取得月份數字（例如 "3/31" 或時間戳記都能處理）
+function getMonthFromDateCurr(dateCurr){
+  const dc=cleanDate(dateCurr)||String(dateCurr||'');
+  if(dc.includes('/')){
+    return parseInt(dc.split('/')[0]);
+  }
+  return null;
+}
+
 // 選月份時：有紀錄則填入舊資料，沒有則帶入上期電表
 function autoFillMonth(){
   const val=document.getElementById('bill-month').value;
   if(!val||!records.length)return;
 
-  // 計算當月的 dateCurr（本月最後一天）和 datePrev（上月最後一天）
   const [y,m]=val.split('-').map(Number);
   const prevMonth=m===1?12:m-1;
   const prevYear=m===1?y-1:y;
   const lastDayPrev=new Date(prevYear,prevMonth,0).getDate();
   const lastDayCurr=new Date(y,m,0).getDate();
-  const expectedCurr=`${m}/${lastDayCurr}`;
   const expectedPrev=`${prevMonth}/${lastDayPrev}`;
+  const expectedCurr=`${m}/${lastDayCurr}`;
 
-  // 找當月紀錄：比對 dateCurr
+  // 找當月紀錄：比對 dateCurr 的月份
   const current=records.find(r=>{
-    const dc=cleanDate(r.dateCurr)||String(r.dateCurr||'');
-    return dc===expectedCurr;
+    const mo=getMonthFromDateCurr(r.dateCurr);
+    return mo===m;
   });
 
   if(current){
-    // 填入已存的資料
-    document.getElementById('date-prev').value=cleanDate(current.datePrev)||current.datePrev||expectedPrev;
-    document.getElementById('date-curr').value=cleanDate(current.dateCurr)||current.dateCurr||expectedCurr;
+    document.getElementById('date-prev').value=cleanDate(current.datePrev)||expectedPrev;
+    document.getElementById('date-curr').value=cleanDate(current.dateCurr)||expectedCurr;
     setMode('2f', String(current.billingMode2f||'A'));
     setMode('3f', String(current.billingMode3f||'A'));
     const map=[
@@ -305,12 +312,12 @@ function autoFillMonth(){
     return;
   }
 
-  // 沒有當月紀錄：找 dateCurr = 上月最後一天 的紀錄，帶入上期電表
+  // 沒有當月紀錄：找上個月的紀錄，帶入上期電表
   const prev=records.find(r=>{
-    const dc=cleanDate(r.dateCurr)||String(r.dateCurr||'');
-    return dc===expectedPrev;
+    const mo=getMonthFromDateCurr(r.dateCurr);
+    return mo===prevMonth;
   });
-  if(!prev)return;
+  if(!prev){showToast('找不到上期紀錄');return;}
   ['u1curr','u2curr','u3curr','u4curr'].forEach((key,i)=>{
     const v=prev[key];
     if(v!==undefined&&v!==''&&v!==null){
@@ -671,5 +678,6 @@ function showToast(msg){
 
 document.getElementById('pw-input').focus();
 </script>
-</body>
-</html>
+
+
+</body></html>
